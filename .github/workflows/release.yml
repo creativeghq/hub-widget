@@ -55,6 +55,7 @@ jobs:
           test -d "$APP/Contents/PlugIns/HubWidgetExtension.appex"
           codesign --verify --deep --strict --verbose=2 "$APP"
           codesign -d --entitlements - "$APP/Contents/PlugIns/HubWidgetExtension.appex"
+          ! codesign -d --entitlements - "$APP" 2>/dev/null | grep -q get-task-allow
           lipo -archs "$APP/Contents/MacOS/Hub Widget"
 
       - name: Package .dmg and .zip
