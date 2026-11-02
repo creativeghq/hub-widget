@@ -24,14 +24,26 @@ and opens the right page in the web app when you click a figure.
 
 | Widget | Sizes | Shows |
 |---|---|---|
-| **Hub overview** | medium · large · extra large | Every section you can see. Medium shows one headline figure per section; large shows up to three per section; extra large shows every figure plus upcoming items (e.g. the next project deadlines). |
+| **Hub overview** | medium · large · extra large | Every section you can see. Medium: one headline figure per section. Large: up to three per section. Extra large: a card per section. **Click a section** to see its list inside the widget. |
 | **Hub section** | small · medium · large | One section you pick in *Edit Widget* — e.g. a small Finance widget next to a small Real estate one. |
 
 - **Orange means attention.** Overdue invoices, overdue tasks, rent overdue, time off waiting for
   approval, myDATA documents not accepted, lead follow-ups due, open inbox conversations. The server
   decides what counts as attention; the widget only colours it.
-- **Click to open.** Every section and figure opens its page in the web app
-  (e.g. *Overdue invoices* → Finance → Receivables).
+- **Click to drill down.** In the overview, click a section and the widget shows its list:
+  your open tasks, active projects with status and deadline, pending and recently accepted
+  quotes with amount, overdue invoices, open deals, upcoming viewings, low-stock items, time off
+  to approve, open conversations. Click a row to open that record in the browser; **‹ All** goes
+  back (it also returns by itself after 10 minutes).
+- **Mac notifications.** Hub Widget sits in the menu bar and turns your platform notifications
+  into native macOS notifications — *Quote accepted*, *Task overdue*, *New conversation assigned*
+  and everything else your notification bell gets. Clicking one opens the record. The platform's
+  Flows decide what you are notified about, so an admin can pause or edit a notification in one
+  place for everyone.
+- **Designs change without reinstalling.** Section order, how much each size shows, the accent
+  colour and an optional banner line come from the platform (`widget_layouts`) and reach every
+  widget on its next refresh.
+- **Updates itself.** New versions download and install automatically (Sparkle).
 - **You only see what you are allowed to see.** A section appears only when your workspace has the
   module *and* your role in it can see that area. A warehouse login does not get a Finance block.
 - **Never a fake zero.** If a section could not be read, it says *Unknown* with the reason. If the
@@ -91,7 +103,7 @@ xattr -dr com.apple.quarantine "/Applications/Hub Widget.app"
 or double-click it, press **Done**, then **System Settings → Privacy & Security → Open Anyway**.
 (`install.sh` does this for you.)
 
-### 3. Create an API key
+### 3. Create an API key and connect the app
 
 In the web app: **Profile → Keys → Generate key** (the Hub Widget window has a button for it).
 
@@ -101,8 +113,11 @@ In the web app: **Profile → Keys → Generate key** (the Hub Widget window has
 - Copy the key — it is shown **once**.
 
 The key acts as you: the widget sees exactly what you see in the app, never more. The endpoint
-is read-only and costs no credits. Optional: paste it into the Hub Widget window → **Check** to
-preview exactly what the widget will show.
+is read-only and costs no credits.
+
+Paste the key into the Hub Widget window → **Connect**. That turns on Mac notifications (allow them
+when macOS asks), sets Hub Widget to open at login, and shows a preview of what the widget will
+display. Later, open the window from the menu-bar icon → **Settings…**.
 
 ### 4. Add the widget and paste the key
 
@@ -111,22 +126,26 @@ preview exactly what the widget will show.
 3. Right-click the widget → **Edit "Hub overview"** → paste the key into **API key**.
    *Workspace* is optional (empty = the key's workspace). For *Hub section*, pick the **Section**.
 
-You paste the key once: every further Hub widget reuses the last key that worked.
+You paste the key into a widget once: every further Hub widget reuses it. (The app and the widget
+each keep their own copy — macOS only lets them share storage when the app is signed with a paid
+Apple Developer account — so the key is pasted twice in total, never again, including after updates.)
 
 Keep **Hub Widget.app** in `/Applications` — clicking a figure in the widget opens the page in
 your browser through it. It does not need to stay open.
 
 ### Updating
 
-Download the new release and replace the app (or re-run `scripts/install.sh`). Widgets on the
-desktop keep their settings.
+Automatic. Hub Widget checks for a new version every 6 hours and installs it in the background
+(menu-bar icon → **Check for updates…** to do it now). Widgets and their settings are kept.
+Only **1.0.0**, which predates auto-update, has to be replaced by hand once.
 
 ## How it works
 
 ```
- Widget (WidgetKit, sandboxed)          Hub Widget.app
-        │  key + workspace from "Edit Widget"     setup guide, key check,
-        │                                         opens clicked links in the browser
+ Widget (WidgetKit, sandboxed)          Hub Widget.app (menu bar, opens at login)
+        │  key + workspace from "Edit Widget"     polls ?view=notifications every minute →
+        │                                         native macOS notifications; opens clicked
+        │                                         links in the browser; Sparkle auto-update
         ▼  GET /functions/v1/workspace-pulse   Authorization: Bearer kai_…
  Supabase edge function  workspace-pulse
         │  resolves the workspace, runs as the key's owner (RLS applies)
@@ -211,10 +230,43 @@ platform database (a `pulse_metric(...)` entry in the right section) and every i
 shows it on its next refresh, no new build. A brand-new **section** also needs its key added
 to `SectionKind` (for the section picker) and to `SectionStyle.symbol` (its icon).
 
+### Changing the design (no new build)
+
+The design lives in the platform table `widget_layouts`: one row `scope = 'default'` for everyone,
+plus optional rows keyed by a workspace id that override it. Platform admins can write it; every
+widget reads it on its next refresh.
+
+```jsonc
+{
+  "attention_color": "#F59E0B",                 // what "needs attention" is drawn in
+  "banner": {"text": "Month-end: issue invoices", "tone": "attention", "url": "/finance?tab=ar"},  // or null
+  "order": ["finance", "quotes", "projects", "tasks", "deals", "realestate", "warehouse", "hr", "crm", "inbox"],
+  "overview": {
+    "medium":      {"max_sections": 6, "columns": 3},
+    "large":       {"max_sections": 6, "metrics": 3},
+    "extra_large": {"max_sections": 12, "columns": 3, "metrics": 3, "items": 0}
+  },
+  "section":  {"small": {"metrics": 3}, "medium": {"metrics": 3, "items": 2}, "large": {"metrics": 6, "items": 6}},
+  "drilldown": {"items": 6}
+}
+```
+
+```sql
+update public.widget_layouts
+   set layout = jsonb_set(layout, '{banner}', '{"text":"Month-end: issue invoices","tone":"attention","url":"/finance?tab=ar"}')
+ where scope = 'default';
+```
+
+Every number is capped by the app to what fits that widget size (`FitLimits`), so a layout can
+restyle the widget but never make it overflow. A new building block (a chart, a new card style)
+is an app change and ships through auto-update.
+
 ## Troubleshooting
 
 | You see | Do this |
 |---|---|
+| No Mac notifications | Menu-bar icon → Settings…: the key is connected and *Show Mac notifications* is on; System Settings → Notifications → Hub Widget is allowed; *Open at login* is on (notifications need the app running). |
+| No menu-bar icon | Open Hub Widget from Applications once; it then starts at login. |
 | "Right-click this widget → Edit Widget…" | No key yet: right-click → Edit, paste the key into API key. |
 | "The API key was refused" | The key was revoked or expired — generate a new one in Profile → Keys. |
 | "Workspace not found for this key" | The key is bound to another workspace, or you left it. Clear *Workspace* in Edit Widget, or use a key bound to the right one. |

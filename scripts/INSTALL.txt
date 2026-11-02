@@ -13,7 +13,8 @@ HUB WIDGET — INSTALL (macOS 14 Sonoma or later)
 
 3. Create an API key in the web app: Profile → Keys → Generate key.
    Bind it to your workspace and copy it (it is shown once).
-   The Hub Widget window can check the key and show you what the widget will display.
+   Paste it into the Hub Widget window → Connect. That turns on Mac notifications
+   (allow them when asked) and opens Hub Widget at login. It lives in the menu bar.
 
 4. Add the widget: right-click the desktop → Edit Widgets… → search "Hub" →
    drag "Hub overview" or "Hub section" onto the desktop.
@@ -21,5 +22,6 @@ HUB WIDGET — INSTALL (macOS 14 Sonoma or later)
 5. Right-click the widget → Edit "Hub overview", paste the key into "API key".
    Any further Hub widgets reuse it. For "Hub section", pick the section there too.
 
-Keep Hub Widget in Applications: clicking a figure opens the page in your browser through it.
+Click a section in the overview to see its list; click a row to open it. Updates install
+automatically. Keep Hub Widget in Applications.
 Full guide: https://github.com/creativeghq/hub-widget#readme
