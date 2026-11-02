@@ -4,15 +4,23 @@ import SwiftUI
 enum Fmt {
     static func value(_ m: PulseMetric, compact: Bool = true) -> String {
         if m.isMoney {
-            let style = FloatingPointFormatStyle<Double>.Currency(code: m.currency ?? "EUR")
-                .precision(.fractionLength(0))
-            return compact && abs(m.value) >= 10_000
-                ? m.value.formatted(style.notation(.compactName))
-                : m.value.formatted(style)
+            let code = m.currency ?? "EUR"
+            guard compact && abs(m.value) >= 10_000 else {
+                return m.value.formatted(.currency(code: code).precision(.fractionLength(0)))
+            }
+            // Compact currency notation is macOS 15+ in extensions; symbol + compact number is the same text.
+            return symbol(for: code) + m.value.formatted(.number.notation(.compactName).precision(.fractionLength(0...1)))
         }
         return compact && m.value >= 10_000
             ? m.value.formatted(.number.notation(.compactName))
             : m.value.formatted(.number.precision(.fractionLength(0)))
+    }
+
+    static func symbol(for code: String) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = code
+        return f.currencySymbol ?? code + " "
     }
 
     static func ago(_ date: Date?) -> String {

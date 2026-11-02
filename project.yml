@@ -92,3 +92,10 @@ schemes:
       targets: [HubWidgetTests]
     archive:
       config: Release
+  HubWidgetExtension:
+    build:
+      targets:
+        HubWidget: all
+        HubWidgetExtension: all
+    run:
+      config: Debug
