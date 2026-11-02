@@ -4,6 +4,10 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.6.0
 configFiles:
   Debug: Config/Signing.xcconfig
   Release: Config/Signing.xcconfig
@@ -23,11 +27,20 @@ targets:
     sources: [HubWidget, Shared]
     dependencies:
       - target: HubWidgetExtension
+      - package: Sparkle
     info:
       path: HubWidget/Info.plist
       properties:
         CFBundleDisplayName: Hub Widget
         LSApplicationCategoryType: public.app-category.business
+        LSUIElement: true
+        NSUserNotificationAlertStyle: alert
+        SUFeedURL: https://github.com/creativeghq/hub-widget/releases/latest/download/appcast.xml
+        SUPublicEDKey: MkOQFKrb7oh3ILwOWQHlCdXjhiAk1SktIkKd+NRLv2M=
+        SUEnableInstallerLauncherService: true
+        SUEnableAutomaticChecks: true
+        SUAutomaticallyUpdate: true
+        SUScheduledCheckInterval: 21600
         CFBundleURLTypes:
           - CFBundleURLName: com.creativeghq.hubwidget
             CFBundleURLSchemes: [hubwidget]
@@ -36,6 +49,9 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
+        com.apple.security.temporary-exception.mach-lookup.global-name:
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spks
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spki
     settings:
       base:
         PRODUCT_NAME: Hub Widget

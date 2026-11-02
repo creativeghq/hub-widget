@@ -45,7 +45,7 @@ jobs:
           xcodebuild -project HubWidget.xcodeproj -scheme HubWidget -configuration Release \
             -destination 'generic/platform=macOS' -derivedDataPath build \
             ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO ENABLE_HARDENED_RUNTIME=NO \
             MARKETING_VERSION=${{ steps.v.outputs.version }} CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             build | tail -3
 
@@ -70,8 +70,20 @@ jobs:
           ln -s /Applications stage/Applications
           cp scripts/INSTALL.txt "stage/How to install.txt"
           hdiutil create -volname "Hub Widget $V" -srcfolder stage -ov -format UDZO "dist/HubWidget-$V.dmg"
-          ditto -c -k --keepParent "$APP" "dist/HubWidget-$V.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/HubWidget-$V.zip"
           (cd dist && shasum -a 256 * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      # Sparkle auto-update feed. The app reads releases/latest/download/appcast.xml, so publishing a
+      # release IS shipping the update. The .zip is signed with the EdDSA key whose public half is in
+      # the app (SUPublicEDKey); an unsigned or mis-signed update is refused by every installed copy.
+      - name: Sign the update and write appcast.xml
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          test -n "$SPARKLE_ED_PRIVATE_KEY" || { echo "SPARKLE_ED_PRIVATE_KEY secret is missing"; exit 1; }
+          python3 -m pip install --quiet --break-system-packages cryptography 2>/dev/null || python3 -m pip install --quiet cryptography
+          V=${{ steps.v.outputs.version }} BUILD=${{ github.run_number }} python3 scripts/make_appcast.py
+          cat dist/appcast.xml
 
       - name: Publish the release
         env:

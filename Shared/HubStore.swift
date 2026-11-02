@@ -20,8 +20,27 @@ enum HubStore {
         return try? JSONDecoder.pulse.decode(Pulse.self, from: data)
     }
 
+    /// The cached pulse if it was fetched within `maxAge` — so a click inside the widget is instant.
+    static func freshPulse(key: String, workspaceId: String?, maxAge: TimeInterval) -> Pulse? {
+        let at = defaults.double(forKey: cacheKey(key, workspaceId) + ".at")
+        guard at > 0, Date().timeIntervalSince1970 - at < maxAge else { return nil }
+        return cachedPulse(key: key, workspaceId: workspaceId)
+    }
+
     static func storeCache(_ pulse: Pulse, key: String, workspaceId: String?) {
         defaults.set(try? JSONEncoder.pulse.encode(pulse), forKey: cacheKey(key, workspaceId))
+        defaults.set(Date().timeIntervalSince1970, forKey: cacheKey(key, workspaceId) + ".at")
+    }
+
+    /// Where the notification feed got to; nil = start from now.
+    static var notificationCursor: String? {
+        get { nonEmpty(defaults.string(forKey: "notificationCursor")) }
+        set { defaults.set(newValue, forKey: "notificationCursor") }
+    }
+
+    static var notificationsEnabled: Bool {
+        get { defaults.object(forKey: "notificationsEnabled") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "notificationsEnabled") }
     }
 
     /// A deep link into the web app. `path` is the section/metric `url` the server sent.

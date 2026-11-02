@@ -9,9 +9,10 @@ struct Pulse: Codable, Equatable {
     let sections: [PulseSection]
     let unavailable: [UnavailableSection]
     let workspaces: [WorkspaceRef]
+    let layout: WidgetLayout
 
     enum CodingKeys: String, CodingKey {
-        case ok, workspace, attention, sections, unavailable, workspaces
+        case ok, workspace, attention, sections, unavailable, workspaces, layout
         case asOf = "as_of"
     }
 
@@ -24,9 +25,18 @@ struct Pulse: Codable, Equatable {
         sections = try c.decodeIfPresent([PulseSection].self, forKey: .sections) ?? []
         unavailable = try c.decodeIfPresent([UnavailableSection].self, forKey: .unavailable) ?? []
         workspaces = try c.decodeIfPresent([WorkspaceRef].self, forKey: .workspaces) ?? []
+        layout = (try? c.decodeIfPresent(WidgetLayout.self, forKey: .layout)) ?? WidgetLayout()
     }
 
     func section(_ key: String) -> PulseSection? { sections.first { $0.key == key } }
+
+    /// Sections in the order the server's layout asks for; unknown keys keep their server order at the end.
+    var orderedSections: [PulseSection] {
+        let rank = Dictionary(layout.order.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+        return sections.enumerated()
+            .sorted { (rank[$0.element.key] ?? 1000 + $0.offset) < (rank[$1.element.key] ?? 1000 + $1.offset) }
+            .map(\.element)
+    }
 }
 
 struct WorkspaceRef: Codable, Equatable, Hashable, Identifiable {
@@ -79,10 +89,15 @@ struct PulseMetric: Codable, Equatable, Identifiable {
 struct PulseItem: Codable, Equatable, Identifiable {
     let title: String
     let subtitle: String?
+    let status: String?
     let date: String?
     let url: String?
+    let tone: String?
+    let value: Double?
+    let currency: String?
 
-    var id: String { title + (date ?? "") }
+    var id: String { (url ?? "") + title + (date ?? "") }
+    var needsAttention: Bool { tone == "attention" }
 }
 
 struct UnavailableSection: Codable, Equatable {

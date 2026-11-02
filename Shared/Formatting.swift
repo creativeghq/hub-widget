@@ -39,6 +39,33 @@ enum Fmt {
     }
 }
 
+extension Fmt {
+    /// `in_progress` → `In progress`.
+    static func status(_ raw: String?) -> String? {
+        guard let raw, !raw.isEmpty else { return nil }
+        let words = raw.replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: ".", with: " ")
+        return words.prefix(1).uppercased() + words.dropFirst()
+    }
+
+    static func money(_ value: Double, currency: String?) -> String {
+        let code = currency ?? "EUR"
+        if abs(value) >= 10_000 {
+            return symbol(for: code) + value.formatted(.number.notation(.compactName).precision(.fractionLength(0...1)))
+        }
+        return value.formatted(.currency(code: code).precision(.fractionLength(0)))
+    }
+}
+
+extension Color {
+    /// `#F59E0B` → Color; nil for anything else.
+    init?(hex: String?) {
+        guard var h = hex?.trimmingCharacters(in: .whitespaces), !h.isEmpty else { return nil }
+        if h.hasPrefix("#") { h.removeFirst() }
+        guard h.count == 6, let v = UInt32(h, radix: 16) else { return nil }
+        self.init(red: Double((v >> 16) & 0xFF) / 255, green: Double((v >> 8) & 0xFF) / 255, blue: Double(v & 0xFF) / 255)
+    }
+}
+
 enum SectionStyle {
     static func symbol(_ key: String) -> String {
         switch key {
@@ -57,4 +84,6 @@ enum SectionStyle {
     }
 
     static let attention = Color.orange
+
+    static func accent(_ layout: WidgetLayout?) -> Color { Color(hex: layout?.attentionColor) ?? attention }
 }

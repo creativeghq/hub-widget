@@ -7,9 +7,12 @@ struct PulseEntry: TimelineEntry {
     /// Set when the latest fetch failed; `pulse` is then the last good one, shown as stale.
     let error: String?
     let section: SectionKind?
+    /// The overview widget is zoomed into this section (an in-widget click), or nil.
+    var drill: String? = nil
 
     var isStale: Bool { error != nil && pulse != nil }
-    var visibleSections: [PulseSection] { pulse?.sections ?? [] }
+    var visibleSections: [PulseSection] { pulse?.orderedSections ?? [] }
+    var layout: WidgetLayout { pulse?.layout ?? WidgetLayout() }
 
     static func sample(_ section: SectionKind? = nil) -> PulseEntry {
         PulseEntry(date: .now, pulse: SamplePulse.value, error: nil, section: section)
@@ -20,9 +23,12 @@ enum Refresh {
     /// WidgetKit budgets reloads; 15 minutes is the floor that is honoured reliably.
     static let interval: TimeInterval = 15 * 60
 
-    static func load(key: String?, workspace: WorkspaceEntity?, section: SectionKind?) async -> PulseEntry {
-        let result = await PulseClient.refresh(key: key, workspaceId: workspace?.id)
-        return PulseEntry(date: .now, pulse: result.pulse, error: result.error, section: section)
+    /// A click inside the widget reloads it; serving a pulse under two minutes old keeps that instant.
+    static let clickCache: TimeInterval = 120
+
+    static func load(key: String?, workspace: WorkspaceEntity?, section: SectionKind?, drill: String? = nil) async -> PulseEntry {
+        let result = await PulseClient.refresh(key: key, workspaceId: workspace?.id, maxAge: clickCache)
+        return PulseEntry(date: .now, pulse: result.pulse, error: result.error, section: section, drill: drill)
     }
 
     static func timeline(_ entry: PulseEntry) -> Timeline<PulseEntry> {
@@ -34,11 +40,13 @@ struct OverviewProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> PulseEntry { .sample() }
 
     func snapshot(for configuration: OverviewIntent, in context: Context) async -> PulseEntry {
-        context.isPreview ? .sample() : await Refresh.load(key: configuration.apiKey, workspace: configuration.workspace, section: nil)
+        context.isPreview ? .sample() : await Refresh.load(key: configuration.apiKey, workspace: configuration.workspace,
+                                                            section: nil, drill: DrillState.current)
     }
 
     func timeline(for configuration: OverviewIntent, in context: Context) async -> Timeline<PulseEntry> {
-        Refresh.timeline(await Refresh.load(key: configuration.apiKey, workspace: configuration.workspace, section: nil))
+        Refresh.timeline(await Refresh.load(key: configuration.apiKey, workspace: configuration.workspace,
+                                            section: nil, drill: DrillState.current))
     }
 }
 

@@ -4,12 +4,13 @@ import AppKit
 
 @MainActor
 final class SetupModel: ObservableObject {
-    @Published var apiKey = ""
+    @Published var apiKey = HubStore.rememberedKey ?? ""
     @Published var pulse: Pulse?
     @Published var status: String?
     @Published var busy = false
 
-    func test() async {
+    /// Checks the key and keeps it for Mac notifications. The widget keeps its own copy (Edit Widget).
+    func save(delegate: AppDelegate) async {
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard key.hasPrefix("kai_") else {
             status = "An API key starts with kai_. Create one in Profile → Keys."
@@ -19,17 +20,33 @@ final class SetupModel: ObservableObject {
         defer { busy = false }
         do {
             pulse = try await PulseClient(apiKey: key).fetch()
-            status = "The key works. Paste the same key into the widget (step 3)."
+            HubStore.rememberedKey = key
+            let allowed = await delegate.requestNotificationPermission()
+            if !delegate.opensAtLogin { delegate.opensAtLogin = true }
+            status = allowed
+                ? "Connected. New platform notifications will appear as Mac notifications."
+                : "Connected. Mac notifications are off — allow them in System Settings → Notifications → Hub Widget."
+            await delegate.poll()
             WidgetCenter.shared.reloadAllTimelines()
         } catch {
             pulse = nil
             status = error.localizedDescription
         }
     }
+
+    func forget() {
+        HubStore.rememberedKey = nil
+        HubStore.notificationCursor = nil
+        apiKey = ""
+        pulse = nil
+        status = "Key removed from this app. Widgets keep the key set in Edit Widget."
+    }
 }
 
 struct SettingsView: View {
+    @ObservedObject var delegate: AppDelegate
     @StateObject private var model = SetupModel()
+    @State private var notificationsOn = HubStore.notificationsEnabled
 
     var body: some View {
         Form {
@@ -40,11 +57,11 @@ struct SettingsView: View {
             }
 
             Section {
-                Step(n: 2, title: "Check the key (optional)",
-                     text: "Paste it here to see exactly what the widget will show. Nothing is stored by this window.")
+                Step(n: 2, title: "Connect this Mac",
+                     text: "Paste the key for Mac notifications (quote accepted, task overdue, new conversation…). It stays on this Mac.")
                 HStack {
                     SecureField("kai_…", text: $model.apiKey).textFieldStyle(.roundedBorder)
-                    Button("Check") { Task { await model.test() } }
+                    Button("Connect") { Task { await model.save(delegate: delegate) } }
                         .keyboardShortcut(.defaultAction)
                         .disabled(model.busy || model.apiKey.isEmpty)
                     if model.busy { ProgressView().controlSize(.small) }
@@ -52,11 +69,18 @@ struct SettingsView: View {
                 if let status = model.status {
                     Text(status).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                 }
+                Toggle("Show Mac notifications", isOn: $notificationsOn)
+                    .onChange(of: notificationsOn) { _, on in HubStore.notificationsEnabled = on }
+                Toggle("Open at login (needed for notifications)", isOn: Binding(
+                    get: { delegate.opensAtLogin }, set: { delegate.opensAtLogin = $0 }))
+                if !model.apiKey.isEmpty { Button("Remove key", role: .destructive) { model.forget() } }
             }
 
             Section {
                 Step(n: 3, title: "Add the widget",
-                     text: "Right-click the desktop → Edit Widgets… → search “Hub” → drag Hub overview or Hub section onto the desktop. Then right-click the widget → Edit, and paste the key into API key. Further Hub widgets reuse it.")
+                     text: "Right-click the desktop → Edit Widgets… → search “Hub” → drag Hub overview or Hub section onto the desktop. Right-click it → Edit, and paste the same key into API key — once; further Hub widgets reuse it.")
+                Text("In the overview, click a section to see its list (projects, pending quotes, tasks…); click a row to open it in the browser. ‹ All goes back.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             if let pulse = model.pulse {
@@ -66,8 +90,14 @@ struct SettingsView: View {
             }
 
             Section {
-                Text("Keep Hub Widget in Applications: clicking a figure in the widget opens the page in your browser through this app. It does not need to stay open.")
-                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?")")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Check for updates…") { delegate.updater.checkForUpdates(nil) }
+                }
+            } footer: {
+                Text("Updates install automatically. Hub Widget lives in the menu bar; keep it in Applications.")
             }
         }
         .formStyle(.grouped)
@@ -92,7 +122,7 @@ struct PreviewList: View {
     let pulse: Pulse
 
     var body: some View {
-        ForEach(pulse.sections) { section in
+        ForEach(pulse.orderedSections) { section in
             VStack(alignment: .leading, spacing: 4) {
                 Label(section.title, systemImage: SectionStyle.symbol(section.key)).font(.headline)
                 if section.failed {

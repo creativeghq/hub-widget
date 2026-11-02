@@ -72,4 +72,33 @@ final class PulseTests: XCTestCase {
         XCTAssertNotNil(PulseDate.parse("2026-11-02T17:50:36Z"))
         XCTAssertNil(PulseDate.parse("not a date"))
     }
+
+    func testMissingLayoutFallsBackToDefaults() throws {
+        let pulse = try fixture()
+        XCTAssertEqual(pulse.layout.overview.medium.maxSections, 6)
+        XCTAssertNil(pulse.layout.banner)
+    }
+
+    func testServerLayoutOrdersSectionsAndToleratesDuplicates() throws {
+        var json = try String(contentsOf: XCTUnwrap(Bundle(for: Self.self).url(forResource: "pulse", withExtension: "json")))
+        json = json.replacingOccurrences(of: "\"unavailable\": [", with: """
+          "layout": {"order": ["warehouse", "projects", "warehouse"], "attention_color": "#FF0000",
+                     "banner": {"text": "Month end", "tone": "attention"},
+                     "overview": {"medium": {"max_sections": 99}}, "bogus": 1},
+          "unavailable": [
+        """)
+        let pulse = try JSONDecoder.pulse.decode(Pulse.self, from: Data(json.utf8))
+        XCTAssertEqual(pulse.orderedSections.map(\.key), ["warehouse", "projects", "finance"])
+        XCTAssertEqual(pulse.layout.banner?.text, "Month end")
+        XCTAssertEqual(pulse.layout.overview.large.maxSections, 6, "unspecified sizes keep their defaults")
+        XCTAssertEqual(FitLimits.clamp(pulse.layout.overview.medium.maxSections, 6, max: FitLimits.overviewMedium.sections), 6,
+                       "the server cannot make a widget overflow")
+    }
+
+    func testItemsCarryStatusAndMoney() throws {
+        let item = try JSONDecoder().decode(PulseItem.self, from: Data(#"{"title":"Q-14","status":"accepted","value":1200.5,"currency":"EUR","tone":"attention"}"#.utf8))
+        XCTAssertTrue(item.needsAttention)
+        XCTAssertEqual(Fmt.status("in_progress"), "In progress")
+        XCTAssertEqual(item.value, 1200.5)
+    }
 }
