@@ -3,7 +3,9 @@ name: Build & test
 on:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'scripts/INSTALL.txt', 'LICENSE']
   pull_request:
+    paths-ignore: ['**.md', 'scripts/INSTALL.txt', 'LICENSE']
   workflow_dispatch:
 
 concurrency:
