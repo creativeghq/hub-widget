@@ -1,64 +1,27 @@
 import Foundation
-import Security
 
-/// Settings and the last good pulse, shared by the app and the widget extension through the App Group.
-/// The API key lives in the Keychain under the same group, never in UserDefaults.
+/// Addresses, the remembered key and the last good pulse.
+/// An ad-hoc signed build has no App Group, so the app and the widget extension each keep their own
+/// copy in their own sandbox: the widget's key comes from its "Edit Widget" panel, not from the app.
 enum HubStore {
-    static let defaultAPIBase = "https://bgbavxtjlbvgplozizxu.supabase.co/functions/v1"
-    static let defaultAppBase = "https://app.materialshub.gr"
+    static let apiBase = "https://bgbavxtjlbvgplozizxu.supabase.co/functions/v1"
+    static let appBase = "https://app.materialshub.gr"
 
-    /// `$(TeamIdentifierPrefix)com.creativeghq.hubwidget`, resolved at build time into Info.plist.
-    static let appGroup: String = {
-        let raw = Bundle.main.object(forInfoDictionaryKey: "HubAppGroup") as? String ?? ""
-        return raw.isEmpty || raw.contains("$(") ? "com.creativeghq.hubwidget" : raw
-    }()
+    static var defaults: UserDefaults { .standard }
 
-    static var defaults: UserDefaults { UserDefaults(suiteName: appGroup) ?? .standard }
-
-    private enum Key {
-        static let apiBase = "apiBase"
-        static let appBase = "appBase"
-        static let workspaceId = "workspaceId"
-        static let hiddenSections = "hiddenSections"
-        static let lastPulse = "lastPulse"
-        static let lastError = "lastError"
+    /// The last key that worked in this process, so a second widget needs no key of its own.
+    static var rememberedKey: String? {
+        get { nonEmpty(defaults.string(forKey: "rememberedKey")) }
+        set { defaults.set(newValue, forKey: "rememberedKey") }
     }
 
-    static var apiBase: String {
-        get { nonEmpty(defaults.string(forKey: Key.apiBase)) ?? defaultAPIBase }
-        set { defaults.set(trimSlash(newValue), forKey: Key.apiBase) }
+    static func cachedPulse(key: String, workspaceId: String?) -> Pulse? {
+        guard let data = defaults.data(forKey: cacheKey(key, workspaceId)) else { return nil }
+        return try? JSONDecoder.pulse.decode(Pulse.self, from: data)
     }
 
-    static var appBase: String {
-        get { nonEmpty(defaults.string(forKey: Key.appBase)) ?? defaultAppBase }
-        set { defaults.set(trimSlash(newValue), forKey: Key.appBase) }
-    }
-
-    /// nil = let the server pick (the key's bound workspace, else your most recent one).
-    static var workspaceId: String? {
-        get { nonEmpty(defaults.string(forKey: Key.workspaceId)) }
-        set { defaults.set(newValue, forKey: Key.workspaceId) }
-    }
-
-    static var hiddenSections: Set<String> {
-        get { Set(defaults.stringArray(forKey: Key.hiddenSections) ?? []) }
-        set { defaults.set(Array(newValue).sorted(), forKey: Key.hiddenSections) }
-    }
-
-    static var lastPulse: Pulse? {
-        get {
-            guard let data = defaults.data(forKey: Key.lastPulse) else { return nil }
-            return try? JSONDecoder.pulse.decode(Pulse.self, from: data)
-        }
-        set {
-            let data = newValue.flatMap { try? JSONEncoder.pulse.encode($0) }
-            defaults.set(data, forKey: Key.lastPulse)
-        }
-    }
-
-    static var lastError: String? {
-        get { defaults.string(forKey: Key.lastError) }
-        set { defaults.set(newValue, forKey: Key.lastError) }
+    static func storeCache(_ pulse: Pulse, key: String, workspaceId: String?) {
+        defaults.set(try? JSONEncoder.pulse.encode(pulse), forKey: cacheKey(key, workspaceId))
     }
 
     /// A deep link into the web app. `path` is the section/metric `url` the server sent.
@@ -67,7 +30,7 @@ enum HubStore {
         return URL(string: appBase + (p.hasPrefix("/") ? p : "/" + p))
     }
 
-    /// The widget cannot open a browser URL itself on every macOS version; it hands the path to the app.
+    /// The widget hands the path to the app, which opens it in the browser.
     static func widgetLink(_ path: String?) -> URL {
         var c = URLComponents()
         c.scheme = "hubwidget"
@@ -76,15 +39,13 @@ enum HubStore {
         return c.url ?? URL(string: "hubwidget://open")!
     }
 
-    private static func nonEmpty(_ s: String?) -> String? {
+    static func nonEmpty(_ s: String?) -> String? {
         guard let s = s?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty else { return nil }
         return s
     }
 
-    private static func trimSlash(_ s: String) -> String {
-        var out = s.trimmingCharacters(in: .whitespacesAndNewlines)
-        while out.hasSuffix("/") { out.removeLast() }
-        return out
+    private static func cacheKey(_ key: String, _ workspaceId: String?) -> String {
+        "pulse.\(key.suffix(8)).\(workspaceId ?? "default")"
     }
 }
 
@@ -92,48 +53,6 @@ extension JSONEncoder {
     static let pulse: JSONEncoder = {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
-        e.keyEncodingStrategy = .useDefaultKeys
         return e
     }()
-}
-
-/// The `kai_` API key, in the data-protection Keychain shared through the App Group.
-enum APIKeyStore {
-    private static let service = "com.creativeghq.hubwidget"
-    private static let account = "kai-api-key"
-
-    private static func baseQuery() -> [String: Any] {
-        [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecAttrAccessGroup as String: HubStore.appGroup,
-            kSecUseDataProtectionKeychain as String: true,
-        ]
-    }
-
-    static func read() -> String? {
-        var query = baseQuery()
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    @discardableResult
-    static func save(_ key: String) -> OSStatus {
-        let data = Data(key.trimmingCharacters(in: .whitespacesAndNewlines).utf8)
-        let update = SecItemUpdate(baseQuery() as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-        if update == errSecSuccess { return update }
-        var add = baseQuery()
-        add[kSecValueData as String] = data
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        return SecItemAdd(add as CFDictionary, nil)
-    }
-
-    static func delete() {
-        SecItemDelete(baseQuery() as CFDictionary)
-    }
 }

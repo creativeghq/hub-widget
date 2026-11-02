@@ -1,0 +1,25 @@
+HUB WIDGET — INSTALL (macOS 14 Sonoma or later)
+
+1. Drag "Hub Widget" onto the Applications folder in this window.
+
+2. Allow it to open (once). It is not signed by an Apple developer account, so macOS blocks
+   the first launch. Either:
+     a) Open Terminal and run:
+          xattr -dr com.apple.quarantine "/Applications/Hub Widget.app"
+        then double-click Hub Widget in Applications.
+   or
+     b) Double-click Hub Widget in Applications, press Done, then open
+        System Settings → Privacy & Security, scroll down and press "Open Anyway".
+
+3. Create an API key in the web app: Profile → Keys → Generate key.
+   Bind it to your workspace and copy it (it is shown once).
+   The Hub Widget window can check the key and show you what the widget will display.
+
+4. Add the widget: right-click the desktop → Edit Widgets… → search "Hub" →
+   drag "Hub overview" or "Hub section" onto the desktop.
+
+5. Right-click the widget → Edit "Hub overview", paste the key into "API key".
+   Any further Hub widgets reuse it. For "Hub section", pick the section there too.
+
+Keep Hub Widget in Applications: clicking a figure opens the page in your browser through it.
+Full guide: https://github.com/creativeghq/hub-widget#readme

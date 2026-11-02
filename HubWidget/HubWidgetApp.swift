@@ -7,7 +7,7 @@ struct HubWidgetApp: App {
     var body: some Scene {
         WindowGroup("Hub Widget") {
             SettingsView()
-                .frame(minWidth: 560, minHeight: 620)
+                .frame(minWidth: 560, minHeight: 560)
                 .onOpenURL(perform: DeepLink.open)
         }
         .windowResizability(.contentSize)

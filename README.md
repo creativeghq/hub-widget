@@ -36,8 +36,8 @@ and opens the right page in the web app when you click a figure.
   module *and* your role in it can see that area. A warehouse login does not get a Finance block.
 - **Never a fake zero.** If a section could not be read, it says *Unknown* with the reason. If the
   network is down, the widget keeps the last good figures and marks them with a ⚠ and their age.
-- **Refresh:** about every 15 minutes (macOS decides the exact moment). *Save & refresh now* in the
-  app forces it.
+- **Refresh:** about every 15 minutes (macOS decides the exact moment). Editing the widget, or
+  pressing **Check** in the Hub Widget window, refreshes it straight away.
 
 ### Sections and figures
 
@@ -60,18 +60,40 @@ section says so.
 
 ## Requirements
 
-- macOS 14 Sonoma or later.
-- Xcode 15 or later (free, from the App Store) — to build it once.
-- An Apple ID added in Xcode → Settings → Accounts. A free account's *Personal Team* is enough to
-  run it on your own Mac; a paid Apple Developer account is only needed to hand a signed copy to
-  someone else.
+- macOS 14 Sonoma or later (Apple silicon or Intel).
 - A platform API key (`kai_…`).
+- Nothing else — no Xcode, no Apple account.
 
 ## Install
 
-### 1. Create an API key
+### 1. Download
 
-In the web app: **Profile → Keys → Generate key**.
+**[Releases](https://github.com/creativeghq/hub-widget/releases/latest) → `HubWidget-<version>.dmg`.**
+Open it and drag **Hub Widget** onto **Applications**.
+
+Or from a terminal, with the GitHub CLI signed in (`brew install gh && gh auth login`):
+
+```bash
+gh repo clone creativeghq/hub-widget && ./hub-widget/scripts/install.sh
+```
+
+That downloads the latest release into `/Applications`, clears the quarantine flag and opens it.
+
+### 2. Allow it to open (once)
+
+The build is signed ad-hoc, not with a paid Apple Developer account, so macOS blocks the first
+launch of a downloaded copy. Either run
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Hub Widget.app"
+```
+
+or double-click it, press **Done**, then **System Settings → Privacy & Security → Open Anyway**.
+(`install.sh` does this for you.)
+
+### 3. Create an API key
+
+In the web app: **Profile → Keys → Generate key** (the Hub Widget window has a button for it).
 
 - Name it e.g. *Mac widget*.
 - Bind it to the workspace you want to watch (recommended — the key can then read nothing else).
@@ -79,45 +101,32 @@ In the web app: **Profile → Keys → Generate key**.
 - Copy the key — it is shown **once**.
 
 The key acts as you: the widget sees exactly what you see in the app, never more. The endpoint
-is read-only and costs no credits.
+is read-only and costs no credits. Optional: paste it into the Hub Widget window → **Check** to
+preview exactly what the widget will show.
 
-### 2. Build and install
+### 4. Add the widget and paste the key
 
-```bash
-git clone https://github.com/creativeghq/hub-widget.git
-cd hub-widget
-DEVELOPMENT_TEAM=ABCDE12345 ./scripts/install.sh
-```
+1. Right-click the desktop → **Edit Widgets…** (or Notification Centre → *Edit Widgets*).
+2. Search **Hub**, drag *Hub overview* or *Hub section* onto the desktop.
+3. Right-click the widget → **Edit "Hub overview"** → paste the key into **API key**.
+   *Workspace* is optional (empty = the key's workspace). For *Hub section*, pick the **Section**.
 
-Your Team ID is in Xcode → Settings → Accounts → select your Apple ID → the *Team* column
-(or developer.apple.com → Membership). The script installs XcodeGen if needed, builds a signed
-Release copy, puts **Hub Widget.app** in `/Applications` and opens it.
+You paste the key once: every further Hub widget reuses the last key that worked.
 
-Prefer Xcode? `brew install xcodegen && xcodegen generate && open HubWidget.xcodeproj`, choose
-your team under *Signing & Capabilities* for both the **HubWidget** and **HubWidgetExtension**
-targets, then **Product → Run**.
+Keep **Hub Widget.app** in `/Applications` — clicking a figure in the widget opens the page in
+your browser through it. It does not need to stay open.
 
-### 3. Connect
+### Updating
 
-In the Hub Widget window, paste the key and press **Connect**. You get a preview of exactly what
-the widget will show. If you belong to several workspaces, pick one; you can also switch sections
-off for the overview widget.
-
-### 4. Add the widget
-
-Right-click the desktop → **Edit Widgets…** (or open Notification Centre → *Edit Widgets*),
-search for **Hub**, and drag *Hub overview* or *Hub section* onto the desktop. For *Hub section*,
-right-click it → **Edit "Hub section"** to choose the section.
-
-Keep **Hub Widget.app** in `/Applications`: it is what opens links from the widget and holds the
-settings. It does not need to stay open.
+Download the new release and replace the app (or re-run `scripts/install.sh`). Widgets on the
+desktop keep their settings.
 
 ## How it works
 
 ```
- Widget (WidgetKit, sandboxed)          Hub Widget.app (settings)
-        │  reads key + settings  ◄── App Group + Keychain ──►  writes them
-        │
+ Widget (WidgetKit, sandboxed)          Hub Widget.app
+        │  key + workspace from "Edit Widget"     setup guide, key check,
+        │                                         opens clicked links in the browser
         ▼  GET /functions/v1/workspace-pulse   Authorization: Bearer kai_…
  Supabase edge function  workspace-pulse
         │  resolves the workspace, runs as the key's owner (RLS applies)
@@ -169,13 +178,15 @@ Config/Signing.xcconfig     includes Config/Local.xcconfig (your DEVELOPMENT_TEA
 Shared/                     compiled into both targets
   PulseModels.swift         Codable types for the response
   PulseClient.swift         the HTTP call + offline cache
-  HubStore.swift            App Group settings and the Keychain key
+  HubStore.swift            addresses, remembered key, offline cache
   Formatting.swift          number/money/date formatting, section icons
   SamplePulse.swift         placeholder data for the widget gallery only
 HubWidget/                  the app: settings window, deep-link handler
 HubWidgetExtension/         the widgets: timeline providers, views, section picker
 Tests/                      decoding/formatting tests against a recorded response
-scripts/install.sh          build, sign, install, open
+scripts/install.sh          download the latest release into /Applications
+scripts/INSTALL.txt         the guide shipped inside the .dmg
+.github/workflows/          build.yml (every push), release.yml (tags → .dmg/.zip release)
 ```
 
 ## Development
@@ -190,6 +201,8 @@ open HubWidget.xcodeproj
 - Run the widget in Xcode: choose the **HubWidgetExtension** scheme → Run → pick a widget family.
 - Tests: `xcodebuild -project HubWidget.xcodeproj -scheme HubWidget -destination 'platform=macOS' test`
 - CI (`.github/workflows/build.yml`) builds unsigned and runs the tests on every push.
+- Building your own signed copy: put `DEVELOPMENT_TEAM = <your team id>` in `Config/Local.xcconfig`,
+  then Product → Archive in Xcode.
 
 ### Adding a figure or a section
 
@@ -202,24 +215,33 @@ to `SectionKind` (for the section picker) and to `SectionStyle.symbol` (its icon
 
 | You see | Do this |
 |---|---|
-| "No API key yet" in the widget | Open Hub Widget.app, paste the key, press Connect. |
+| "Right-click this widget → Edit Widget…" | No key yet: right-click → Edit, paste the key into API key. |
 | "The API key was refused" | The key was revoked or expired — generate a new one in Profile → Keys. |
-| "Workspace not found for this key" | The key is bound to another workspace, or you left it. Clear the workspace picker or use a key bound to the right one. |
-| "Could not store the key in the Keychain (OSStatus -34018)" | The app was built without a signing team, so it has no App Group. Rebuild with `DEVELOPMENT_TEAM=… ./scripts/install.sh`. |
+| "Workspace not found for this key" | The key is bound to another workspace, or you left it. Clear *Workspace* in Edit Widget, or use a key bound to the right one. |
+| "Hub Widget can't be opened" / "Apple could not verify…" | First launch of an ad-hoc build — see Install step 2. |
 | A section says *Unknown* | The platform could not read that section; the note says why. Other sections are unaffected. |
 | ⚠ next to "Last good …" | The latest refresh failed (offline, VPN, platform down). Figures are from the time shown. |
 | Clicking a figure does nothing | Hub Widget.app must be in `/Applications`; open it once so macOS registers its `hubwidget://` links. |
 | Widget missing from the gallery | Open the app once after installing, then log out/in if macOS still has not picked it up. |
-| A section you expect is missing | The app's settings list it under the sections with the reason: the module is not in the workspace, or your role cannot see it. |
+| A section you expect is missing | Check the key in the Hub Widget window: the preview lists hidden sections with the reason (module not in the workspace, or your role cannot see it). |
 
 ## Security
 
-- The key is stored in the macOS Keychain (data-protection keychain, shared only through this app's
-  App Group) and sent only to the platform API over HTTPS.
+- The key lives in the widget's own configuration (set in *Edit Widget*, kept by macOS for that
+  widget) and in the widget extension's sandboxed preferences so other Hub widgets can reuse it.
+  It is sent only to the platform API over HTTPS. The Hub Widget window does not store it.
 - Both the app and the widget are sandboxed with outgoing network access only.
 - The endpoint is read-only and runs as the key's owner, so database row security applies exactly
   as in the web app. A key bound to a workspace cannot read any other.
-- Removing the key: **Remove key** in the app, and revoke it in Profile → Keys.
+- To revoke: delete the widget and revoke the key in Profile → Keys.
+- Builds are signed ad-hoc (no Apple Developer account). Each release lists SHA-256 checksums
+  (`SHA256SUMS.txt`); compare with `shasum -a 256 HubWidget-*.dmg`.
+
+## Releasing a new version
+
+Push a tag — `git tag v1.0.1 && git push origin v1.0.1` — or run **Actions → Release → Run
+workflow** with a version. The workflow tests, builds a universal (Apple silicon + Intel) app,
+packages `HubWidget-<version>.dmg` and `.zip` with checksums, and publishes the GitHub Release.
 
 ## License
 

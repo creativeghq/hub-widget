@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.0.1 (creates tag v<version>)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: v
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then V="${{ github.event.inputs.version }}"; else V="${GITHUB_REF_NAME#v}"; fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: xcodegen generate
+
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild -project HubWidget.xcodeproj -scheme HubWidget -destination 'platform=macOS' \
+            -derivedDataPath build CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO \
+            -only-testing:HubWidgetTests test | tail -5
+
+      # Ad-hoc signature ("-"): no Apple Developer account. Universal so it runs on Apple silicon and Intel.
+      - name: Build (universal, ad-hoc signed)
+        run: |
+          set -o pipefail
+          xcodebuild -project HubWidget.xcodeproj -scheme HubWidget -configuration Release \
+            -destination 'generic/platform=macOS' -derivedDataPath build \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            MARKETING_VERSION=${{ steps.v.outputs.version }} CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            build | tail -3
+
+      - name: Verify the bundle
+        run: |
+          APP="build/Build/Products/Release/Hub Widget.app"
+          test -d "$APP/Contents/PlugIns/HubWidgetExtension.appex"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -d --entitlements - "$APP/Contents/PlugIns/HubWidgetExtension.appex"
+          lipo -archs "$APP/Contents/MacOS/Hub Widget"
+
+      - name: Package .dmg and .zip
+        run: |
+          V=${{ steps.v.outputs.version }}
+          APP="build/Build/Products/Release/Hub Widget.app"
+          mkdir -p dist stage
+          cp -R "$APP" stage/
+          ln -s /Applications stage/Applications
+          cp scripts/INSTALL.txt "stage/How to install.txt"
+          hdiutil create -volname "Hub Widget $V" -srcfolder stage -ov -format UDZO "dist/HubWidget-$V.dmg"
+          ditto -c -k --keepParent "$APP" "dist/HubWidget-$V.zip"
+          (cd dist && shasum -a 256 * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ steps.v.outputs.version }}
+          TAG="v$V"
+          NOTES=$(cat scripts/RELEASE_NOTES.md)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "Hub Widget $V" --notes "$NOTES" --target "$GITHUB_SHA"
+          fi

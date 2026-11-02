@@ -11,7 +11,7 @@ struct HubWidgetBundle: WidgetBundle {
 
 struct OverviewWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "HubOverview", provider: OverviewProvider()) { entry in
+        AppIntentConfiguration(kind: "HubOverview", intent: OverviewIntent.self, provider: OverviewProvider()) { entry in
             OverviewView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
@@ -36,11 +36,11 @@ struct SectionWidget: Widget {
 #Preview("Overview", as: .systemLarge) {
     OverviewWidget()
 } timeline: {
-    PulseEntry(date: .now, pulse: SamplePulse.value, error: nil, section: nil, hidden: [])
+    PulseEntry.sample()
 }
 
 #Preview("Finance", as: .systemSmall) {
     SectionWidget()
 } timeline: {
-    PulseEntry(date: .now, pulse: SamplePulse.value, error: nil, section: .finance, hidden: [])
+    PulseEntry.sample(.finance)
 }

@@ -9,8 +9,8 @@ enum PulseError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .noKey: return "No API key yet. Open Hub Widget and paste your kai_ key."
-        case .badURL: return "The API address in settings is not a valid URL."
+        case .noKey: return "Right-click this widget → Edit Widget, and paste your kai_ API key."
+        case .badURL: return "The API address is not a valid URL."
         case .http(401, _): return "The API key was refused. Check it is active in Profile → Keys."
         case .http(404, _): return "That workspace was not found for this key."
         case .http(let code, let msg): return "The platform answered \(code): \(msg)"
@@ -21,20 +21,20 @@ enum PulseError: LocalizedError, Equatable {
 }
 
 struct PulseClient {
+    let apiKey: String
+    var workspaceId: String?
     var apiBase: String = HubStore.apiBase
-    var apiKey: String? = APIKeyStore.read()
-    var workspaceId: String? = HubStore.workspaceId
     var session: URLSession = .shared
 
     func fetch() async throws -> Pulse {
-        guard let key = apiKey, !key.isEmpty else { throw PulseError.noKey }
+        guard !apiKey.isEmpty else { throw PulseError.noKey }
         guard var comps = URLComponents(string: apiBase + "/workspace-pulse") else { throw PulseError.badURL }
         if let ws = workspaceId { comps.queryItems = [URLQueryItem(name: "workspace_id", value: ws)] }
         guard let url = comps.url else { throw PulseError.badURL }
 
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         req.httpMethod = "GET"
-        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let data: Data
@@ -57,17 +57,19 @@ struct PulseClient {
         }
     }
 
-    /// Fetch, remember the result for the next time the network is down, and say what happened.
-    static func refresh() async -> (pulse: Pulse?, error: String?) {
+    /// Fetch with the widget's key (or the remembered one), cache the result, and fall back to the
+    /// last good pulse — marked by the returned error — when the platform cannot be reached.
+    static func refresh(key configured: String?, workspaceId: String?) async -> (pulse: Pulse?, error: String?) {
+        guard let key = HubStore.nonEmpty(configured) ?? HubStore.rememberedKey else {
+            return (nil, PulseError.noKey.localizedDescription)
+        }
         do {
-            let pulse = try await PulseClient().fetch()
-            HubStore.lastPulse = pulse
-            HubStore.lastError = nil
+            let pulse = try await PulseClient(apiKey: key, workspaceId: workspaceId).fetch()
+            HubStore.rememberedKey = key
+            HubStore.storeCache(pulse, key: key, workspaceId: workspaceId)
             return (pulse, nil)
         } catch {
-            let message = error.localizedDescription
-            HubStore.lastError = message
-            return (HubStore.lastPulse, message)
+            return (HubStore.cachedPulse(key: key, workspaceId: workspaceId), error.localizedDescription)
         }
     }
 }
