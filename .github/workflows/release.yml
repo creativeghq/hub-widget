@@ -53,6 +53,13 @@ jobs:
           done
           test -f "$APP/Contents/Resources/AppIcon.icns"
           lipo -archs "$APP/Contents/MacOS/Hub Widget"
+          # Sparkle decides "is there an update" from CFBundleVersion: a stale number re-offers the same update forever.
+          for plist in "$APP/Contents/Info.plist" "$APP/Contents/PlugIns/HubWidgetExtension.appex/Contents/Info.plist"; do
+            SV=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$plist")
+            BV=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$plist")
+            echo "$plist: $SV ($BV)"
+            test "$SV" = "${{ steps.v.outputs.version }}" && test "$BV" = "${{ github.run_number }}" || { echo 'version mismatch'; exit 1; }
+          done
 
       - name: Package .dmg and .zip
         run: |

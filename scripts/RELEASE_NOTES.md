@@ -22,6 +22,8 @@ Requires macOS 14 Sonoma or later. Runs on Apple silicon and Intel. Full guide i
 
 ## What's new
 
+- The app reports its real version, so the updater stops offering the same update again (1.2.0 called itself 1.0).
+
 - Click a section in the overview to see its list inside the widget — tasks, projects, pending quotes, invoices, deals, viewings and more. Click a row to open it.
 - Native Mac notifications for your platform notifications (quote accepted, task overdue, new conversation…). Hub Widget now lives in the menu bar and opens at login.
 - The widget measures what fits instead of guessing: nothing is ever cut off. The large overview is now a 2-column tile grid, with sections needing attention first.
