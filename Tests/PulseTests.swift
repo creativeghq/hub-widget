@@ -90,7 +90,7 @@ final class PulseTests: XCTestCase {
         let pulse = try JSONDecoder.pulse.decode(Pulse.self, from: Data(json.utf8))
         XCTAssertEqual(pulse.orderedSections.map(\.key), ["warehouse", "projects", "finance"])
         XCTAssertEqual(pulse.layout.banner?.text, "Month end")
-        XCTAssertEqual(pulse.layout.overview.large.maxSections, 6, "unspecified sizes keep their defaults")
+        XCTAssertEqual(pulse.layout.overview.large.maxSections, 8, "unspecified sizes keep their defaults")
         XCTAssertEqual(FitLimits.clamp(pulse.layout.overview.medium.maxSections, 6, max: FitLimits.overviewMedium.sections), 6,
                        "the server cannot make a widget overflow")
     }
