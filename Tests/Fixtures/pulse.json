@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "as_of": "2026-11-02T17:50:36.266712+00:00",
+  "attention": 2,
+  "workspace": { "id": "daf19ffb-2b3f-4ee7-a726-c5a002e13c02", "name": "Demo workspace" },
+  "workspaces": [
+    { "id": "daf19ffb-2b3f-4ee7-a726-c5a002e13c02", "name": "Demo workspace" },
+    { "id": "0d82b905-1092-4101-a14d-09deadf86922", "name": "Second workspace" }
+  ],
+  "sections": [
+    {
+      "key": "finance", "title": "Finance", "status": "ok", "url": "/finance?tab=ar", "note": null, "items": [],
+      "metrics": [
+        { "key": "receivables", "url": "/finance?tab=ar", "kind": "money", "tone": "neutral", "label": "Owed to you", "value": 1168.79, "currency": "EUR" },
+        { "key": "overdue_invoices", "url": "/finance?tab=ar", "kind": "count", "tone": "attention", "label": "Overdue invoices", "value": 2 },
+        { "key": "supplier_docs_new", "url": "/finance?tab=doc_expenses", "kind": "count", "tone": "neutral", "label": "Supplier documents to file", "value": 161 }
+      ]
+    },
+    {
+      "key": "projects", "title": "Projects", "status": "ok", "url": "/projects", "note": null,
+      "metrics": [ { "key": "active", "url": "/projects", "kind": "count", "tone": "neutral", "label": "Active", "value": 3 } ],
+      "items": [ { "title": "Kitchen", "subtitle": "in_progress", "date": "2026-11-20", "url": "/projects" }, { "title": "No deadline", "subtitle": "planning", "url": "/projects" } ]
+    },
+    {
+      "key": "warehouse", "title": "Warehouse", "status": "failed", "url": "/warehouse",
+      "note": "Could not read this section: canceling statement due to statement timeout", "metrics": [], "items": []
+    }
+  ],
+  "unavailable": [
+    { "key": "hr", "title": "HR", "reason": "not_entitled" },
+    { "key": "tasks", "title": "My tasks", "reason": "no_capability" }
+  ]
+}

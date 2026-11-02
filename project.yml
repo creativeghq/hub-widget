@@ -1,0 +1,94 @@
+name: HubWidget
+options:
+  bundleIdPrefix: com.creativeghq
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.9"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+    DEAD_CODE_STRIPPING: YES
+
+targets:
+  HubWidget:
+    type: application
+    platform: macOS
+    sources: [HubWidget, Shared]
+    dependencies:
+      - target: HubWidgetExtension
+    info:
+      path: HubWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Hub Widget
+        LSApplicationCategoryType: public.app-category.business
+        HubAppGroup: $(TeamIdentifierPrefix)com.creativeghq.hubwidget
+        CFBundleURLTypes:
+          - CFBundleURLName: com.creativeghq.hubwidget
+            CFBundleURLSchemes: [hubwidget]
+    entitlements:
+      path: HubWidget/HubWidget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.application-groups:
+          - $(TeamIdentifierPrefix)com.creativeghq.hubwidget
+    settings:
+      base:
+        PRODUCT_NAME: Hub Widget
+        PRODUCT_BUNDLE_IDENTIFIER: com.creativeghq.hubwidget
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+
+  HubWidgetExtension:
+    type: app-extension
+    platform: macOS
+    sources: [HubWidgetExtension, Shared]
+    info:
+      path: HubWidgetExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Hub Widget
+        HubAppGroup: $(TeamIdentifierPrefix)com.creativeghq.hubwidget
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: HubWidgetExtension/HubWidgetExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.application-groups:
+          - $(TeamIdentifierPrefix)com.creativeghq.hubwidget
+    settings:
+      base:
+        PRODUCT_NAME: HubWidgetExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.creativeghq.hubwidget.widget
+        SKIP_INSTALL: YES
+
+  HubWidgetTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.creativeghq.hubwidget.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  HubWidget:
+    build:
+      targets:
+        HubWidget: all
+        HubWidgetExtension: all
+    run:
+      config: Debug
+    test:
+      targets: [HubWidgetTests]
+    archive:
+      config: Release

@@ -1,0 +1,4 @@
+// Your Apple team goes in Config/Local.xcconfig (git-ignored), e.g.
+//   DEVELOPMENT_TEAM = ABCDE12345
+// A free Apple ID's "Personal Team" works for running the widget on your own Mac.
+#include? "Local.xcconfig"
