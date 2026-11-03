@@ -22,4 +22,5 @@ Requires macOS 14 Sonoma or later. Runs on Apple silicon and Intel. Full guide i
 
 ## What's new
 
-- **One key for the app and every widget.** The key saved in the app's Settings now reaches the widgets too. A widget that still holds an old key from Edit Widget falls back to the app's key instead of showing "API key was refused".
+- **My tasks and Leads on top.** The large Hub overview opens with your tasks and your newest leads as lists side by side. Tick a task's circle to complete it. Every other section sits under them as tiles in two columns.
+- **Task board with day filters.** Tap My tasks to see them as cards, filtered by **All · Overdue · Today · Tomorrow · This week · Later**, each with its count.
