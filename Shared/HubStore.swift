@@ -23,7 +23,8 @@ enum HubStore {
     /// The cached pulse if it was fetched within `maxAge` — so a click inside the widget is instant.
     static func freshPulse(key: String, workspaceId: String?, maxAge: TimeInterval) -> Pulse? {
         let at = defaults.double(forKey: cacheKey(key, workspaceId) + ".at")
-        guard at > 0, Date().timeIntervalSince1970 - at < maxAge else { return nil }
+        guard at > 0, at > defaults.double(forKey: "pulse.expiredAt"),
+              Date().timeIntervalSince1970 - at < maxAge else { return nil }
         return cachedPulse(key: key, workspaceId: workspaceId)
     }
 
@@ -31,6 +32,14 @@ enum HubStore {
         defaults.set(try? JSONEncoder.pulse.encode(pulse), forKey: cacheKey(key, workspaceId))
         defaults.set(Date().timeIntervalSince1970, forKey: cacheKey(key, workspaceId) + ".at")
     }
+
+    /// After an action changed the data, the next render must fetch rather than serve the click cache.
+    static func expireFreshPulses() {
+        defaults.set(Date().timeIntervalSince1970, forKey: "pulse.expiredAt")
+    }
+
+    /// Opens the menu-bar app's quick-add form.
+    static let newLeadLink = URL(string: "hubwidget://new-lead")!
 
     /// Where the notification feed got to; nil = start from now.
     static var notificationCursor: String? {

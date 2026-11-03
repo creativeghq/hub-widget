@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
 
     let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     private var window: NSWindow?
+    private var leadWindow: NSWindow?
     private var timer: Timer?
     static let pollInterval: TimeInterval = 60
 
@@ -43,7 +44,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        urls.forEach(DeepLink.open)
+        for url in urls {
+            if url.scheme == "hubwidget", url.host == "new-lead" { showQuickLead() } else { DeepLink.open(url) }
+        }
+    }
+
+    /// The quick-add form the widget's "+ Lead" opens.
+    func showQuickLead() {
+        if leadWindow == nil {
+            let w = NSWindow(contentViewController: NSHostingController(
+                rootView: QuickLeadView(delegate: self) { [weak self] in self?.leadWindow?.close() }))
+            w.title = "New lead"
+            w.styleMask = [.titled, .closable]
+            w.isReleasedWhenClosed = false
+            w.level = .floating
+            w.center()
+            leadWindow = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        leadWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    /// A local confirmation banner; clicking it opens `path` on the platform.
+    func confirm(title: String, body: String, path: String) async {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.userInfo = ["path": path]
+        try? await UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 
     func showSetup() {
@@ -144,6 +173,8 @@ struct MenuContent: View {
         }
         if let error = delegate.lastError { Text(error).font(.caption) }
         Divider()
+        Button("New lead…") { delegate.showQuickLead() }
+            .keyboardShortcut("l")
         Button("Open platform") { NSWorkspace.shared.open(URL(string: HubStore.appBase)!) }
         Button("Settings…") { delegate.showSetup() }
         Button("Check for updates…") { delegate.updater.checkForUpdates(nil) }

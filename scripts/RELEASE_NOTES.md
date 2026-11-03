@@ -22,7 +22,9 @@ Requires macOS 14 Sonoma or later. Runs on Apple silicon and Intel. Full guide i
 
 ## What's new
 
-- Clearer to click: every section tile has a border and a chevron, and a section that needs attention is tinted in the accent colour.
-- Lists look like lists: rows split by lines, a status tag on each, an arrow showing it opens in Hub, and a "+N more · Open in Hub" line when the list is longer than the widget.
-- Inside a section: the figures sit in boxes above the list, with "All" and "Open" buttons in the header.
-- Bigger, steadier type sizes across every widget size.
+- **+ Lead** — on the overview, the CRM widget and inside CRM: opens a small form (name, phone, email, what they want, follow-up date, value) and saves the lead straight to the platform. Also in the menu bar: **New lead…** (⌘L while the menu is open).
+- **Tick off tasks** — every task row has a circle; click it and the task is marked done on the platform.
+- **Today** — a new first tile: everything dated today plus anything late, across tasks, projects, invoices, leads, deals, viewings and time off.
+- **Every section fits** — the large overview shrinks its tiles before it drops a section, so Real estate, Warehouse and HR no longer fall off the end.
+- **Choose your sections** — right-click the widget → Edit Widget → *Sections*. Leave it empty to show everything you can see.
+- Real estate now lists new enquiries before upcoming viewings.

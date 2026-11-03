@@ -104,37 +104,53 @@ struct ItemRow: View {
     let item: PulseItem
     let accent: Color
     var compact = false
+    var workspaceId: String? = nil
 
     var body: some View {
-        Link(destination: HubStore.widgetLink(item.url)) {
-            HStack(spacing: 7) {
+        HStack(spacing: 7) {
+            if item.canComplete, let id = item.recordId {
+                Button(intent: CompleteTaskIntent(taskId: id, workspaceId: workspaceId)) {
+                    Image(systemName: "circle")
+                        .font(.body)
+                        .foregroundStyle(item.needsAttention ? accent : .secondary)
+                        .frame(width: 18, height: 18)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            } else {
                 RoundedRectangle(cornerRadius: 1.5)
                     .fill(item.needsAttention ? accent : Color.secondary.opacity(0.35))
                     .frame(width: 3)
                     .padding(.vertical, 2)
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 4) {
-                        Text(item.title).font(.footnote.weight(.medium)).lineLimit(1)
-                        Spacer(minLength: 4)
-                        if let v = item.value {
-                            Text(Fmt.money(v, currency: item.currency)).font(.footnote.weight(.semibold)).monospacedDigit()
-                        }
-                    }
-                    if !compact {
-                        HStack(spacing: 5) {
-                            if let s = Fmt.status(item.status) {
-                                StatusTag(text: s, tint: item.needsAttention ? accent : .secondary)
-                            }
-                            Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                        }
+            }
+            Link(destination: HubStore.widgetLink(item.url)) { content }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, compact ? 3 : 4)
+    }
+
+    private var content: some View {
+        HStack(spacing: 7) {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text(item.title).font(.footnote.weight(.medium)).lineLimit(1)
+                    Spacer(minLength: 4)
+                    if let v = item.value {
+                        Text(Fmt.money(v, currency: item.currency)).font(.footnote.weight(.semibold)).monospacedDigit()
                     }
                 }
-                Image(systemName: "arrow.up.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+                if !compact {
+                    HStack(spacing: 5) {
+                        if let s = Fmt.status(item.status) {
+                            StatusTag(text: s, tint: item.needsAttention ? accent : .secondary)
+                        }
+                        Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, compact ? 3 : 4)
-            .contentShape(Rectangle())
+            Image(systemName: "arrow.up.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
         }
+        .contentShape(Rectangle())
     }
 
     private var detail: String {
@@ -149,13 +165,14 @@ struct ItemList: View {
     let accent: Color
     let moreURL: String
     var compact = false
+    var workspaceId: String? = nil
 
     var body: some View {
         let shown = Array(items.prefix(max(0, limit)))
         VStack(spacing: 0) {
             ForEach(Array(shown.enumerated()), id: \.element.id) { index, item in
-                if index > 0 { Divider().overlay(Look.hairline).padding(.leading, 18) }
-                ItemRow(item: item, accent: accent, compact: compact)
+                if index > 0 { Divider().overlay(Look.hairline).padding(.leading, 22) }
+                ItemRow(item: item, accent: accent, compact: compact, workspaceId: workspaceId)
             }
             if items.count > shown.count {
                 Divider().overlay(Look.hairline)
@@ -236,6 +253,17 @@ struct HeaderChip: View {
         .foregroundStyle(accent)
         .padding(.horizontal, 7).padding(.vertical, 3)
         .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+/// Opens the menu-bar app's form; a widget cannot take typing itself.
+struct AddLeadButton: View {
+    let accent: Color
+
+    var body: some View {
+        Link(destination: HubStore.newLeadLink) {
+            HeaderChip(text: "Lead", symbol: "plus", accent: accent)
+        }
     }
 }
 

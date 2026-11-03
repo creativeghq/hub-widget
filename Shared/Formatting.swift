@@ -69,6 +69,7 @@ extension Color {
 enum SectionStyle {
     static func symbol(_ key: String) -> String {
         switch key {
+        case "today": return "sun.max"
         case "tasks": return "checklist"
         case "projects": return "folder"
         case "finance": return "eurosign.circle"

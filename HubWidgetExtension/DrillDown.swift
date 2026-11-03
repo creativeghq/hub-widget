@@ -47,3 +47,28 @@ struct CloseSectionIntent: AppIntent {
         return .result()
     }
 }
+
+/// Ticks a task off from the widget, then reloads so the row disappears.
+struct CompleteTaskIntent: AppIntent {
+    static var title: LocalizedStringResource = "Complete task"
+    static var isDiscoverable = false
+
+    @Parameter(title: "Task")
+    var taskId: String
+
+    @Parameter(title: "Workspace")
+    var workspaceId: String?
+
+    init() {}
+    init(taskId: String, workspaceId: String?) {
+        self.taskId = taskId
+        self.workspaceId = workspaceId
+    }
+
+    func perform() async throws -> some IntentResult {
+        guard let key = HubStore.rememberedKey else { throw PulseError.noKey }
+        try await PulseClient(apiKey: key, workspaceId: workspaceId).completeTask(taskId)
+        HubStore.expireFreshPulses()
+        return .result()
+    }
+}

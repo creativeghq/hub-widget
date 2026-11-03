@@ -101,4 +101,27 @@ final class PulseTests: XCTestCase {
         XCTAssertEqual(Fmt.status("in_progress"), "In progress")
         XCTAssertEqual(item.value, 1200.5)
     }
+
+    func testOnlyATaskWithAnIdCanBeCompleted() throws {
+        let task = try JSONDecoder().decode(PulseItem.self, from: Data(#"{"title":"Fit doors","id":"62783b51-6dd3-4864-8cbe-ef9f032b04de","action":"complete_task"}"#.utf8))
+        XCTAssertTrue(task.canComplete)
+        XCTAssertEqual(task.recordId, "62783b51-6dd3-4864-8cbe-ef9f032b04de")
+        let row = try JSONDecoder().decode(PulseItem.self, from: Data(#"{"title":"Q-14","action":"complete_task"}"#.utf8))
+        XCTAssertFalse(row.canComplete, "no id = nothing to complete")
+    }
+
+    func testLeadDraftSendsOnlyWhatWasTyped() {
+        var lead = LeadDraft()
+        XCTAssertFalse(lead.isValid)
+        lead.name = "Maria Papadopoulou"
+        lead.phone = "  "
+        lead.value = "1500,50"
+        lead.followUp = DateComponents(calendar: .current, year: 2026, month: 11, day: 4, hour: 0, minute: 30).date
+        let p = lead.payload
+        XCTAssertEqual(p["name"] as? String, "Maria Papadopoulou")
+        XCTAssertNil(p["phone"], "a blank field is left out")
+        XCTAssertEqual(p["estimated_value"] as? Double, 1500.5)
+        XCTAssertEqual(p["follow_up_on"] as? String, "2026-11-04", "the local day, not the UTC one")
+        XCTAssertEqual(p["source"] as? String, "phone")
+    }
 }

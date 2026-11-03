@@ -95,9 +95,19 @@ struct PulseItem: Codable, Equatable, Identifiable {
     let tone: String?
     let value: Double?
     let currency: String?
+    /// The record's id, sent only when the widget may act on it (see `action`).
+    let recordId: String?
+    /// `complete_task`, or nil when the row only opens.
+    let action: String?
 
-    var id: String { (url ?? "") + title + (date ?? "") }
+    enum CodingKeys: String, CodingKey {
+        case title, subtitle, status, date, url, tone, value, currency, action
+        case recordId = "id"
+    }
+
+    var id: String { (recordId ?? url ?? "") + title + (date ?? "") }
     var needsAttention: Bool { tone == "attention" }
+    var canComplete: Bool { action == "complete_task" && recordId != nil }
 }
 
 struct UnavailableSection: Codable, Equatable {

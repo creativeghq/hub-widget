@@ -157,6 +157,7 @@ struct OverviewView: View {
                 Text(Fmt.ago(entry.pulse?.asOf)).font(.caption2).foregroundStyle(.tertiary)
             }
             Spacer()
+            if entry.canAddLead { AddLeadButton(accent: accent) }
             let n = entry.pulse?.attention ?? 0
             if n == 0 {
                 Label("All clear", systemImage: "checkmark.circle").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
@@ -187,16 +188,17 @@ struct OverviewView: View {
         let top = FitLimits.clamp(size.maxSections, 8, max: FitLimits.overviewLarge.sections)
         let secondary = (size.metrics ?? 2) > 1
         return ViewThatFits(in: .vertical) {
-            largeTileGrid(top, columns: columns, secondary: secondary)
-            largeTileGrid(top, columns: columns, secondary: false)
-            largeTileGrid(max(1, top - 2), columns: columns, secondary: false)
-            largeTileGrid(max(1, top - 4), columns: columns, secondary: false)
+            largeTileGrid(top, columns: columns, big: true, secondary: secondary)
+            largeTileGrid(top, columns: columns, big: true, secondary: false)
+            largeTileGrid(top, columns: columns, big: false, secondary: false)
+            largeTileGrid(top, columns: 3, big: false, secondary: false)
+            largeTileGrid(max(1, top - 3), columns: 3, big: false, secondary: false)
         }
     }
 
-    private func largeTileGrid(_ count: Int, columns: Int, secondary: Bool) -> some View {
-        SectionGrid(sections: Array(sections.prefix(count)), columns: columns) {
-            SectionTile(section: $0, accent: accent, big: true, secondary: secondary)
+    private func largeTileGrid(_ count: Int, columns: Int, big: Bool, secondary: Bool) -> some View {
+        SectionGrid(sections: Array(sections.prefix(count)), columns: columns, hSpacing: big ? 8 : 6, vSpacing: big ? 8 : 6) {
+            SectionTile(section: $0, accent: accent, big: big, secondary: secondary)
         }
     }
 
@@ -246,7 +248,8 @@ struct OverviewView: View {
     private func cardGrid(_ count: Int, columns: Int, metrics: Int, items: Int) -> some View {
         SectionGrid(sections: Array(sections.prefix(count)), columns: columns, hSpacing: 10, vSpacing: 10) { section in
             Button(intent: OpenSectionIntent(section: section.key)) {
-                SectionCard(section: section, accent: accent, maxMetrics: metrics, maxItems: items, opens: true)
+                SectionCard(section: section, accent: accent, maxMetrics: metrics, maxItems: items, opens: true,
+                            workspaceId: entry.workspaceId)
                     .padding(.horizontal, 10).padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .tile(accent, attention: section.attentionCount > 0)
@@ -283,6 +286,7 @@ struct DrillView: View {
                 .buttonStyle(.plain)
                 SectionLabel(section: section, accent: accent, font: .subheadline.weight(.semibold))
                 Spacer(minLength: 4)
+                if section.key == "crm", entry.canAddLead { AddLeadButton(accent: accent) }
                 Link(destination: HubStore.widgetLink(section.url)) {
                     HeaderChip(text: "Open", symbol: "arrow.up.right", accent: accent, trailingSymbol: true)
                 }
@@ -308,13 +312,15 @@ struct DrillView: View {
             } else if family == .systemMedium {
                 // Too short for figures and a list together; the list is what was clicked for.
                 FitDown(from: itemLimit) { n in
-                    ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url, compact: true)
+                    ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url, compact: true,
+                             workspaceId: entry.workspaceId)
                 }
             } else {
                 FitDown(from: itemLimit) { n in
                     VStack(alignment: .leading, spacing: 8) {
                         StatRow(metrics: metrics, accent: accent)
-                        ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url)
+                        ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url,
+                                 workspaceId: entry.workspaceId)
                     }
                 }
             }
@@ -328,6 +334,7 @@ struct SectionCard: View {
     var maxMetrics = 6
     var maxItems = 3
     var opens = false
+    var workspaceId: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -337,7 +344,8 @@ struct SectionCard: View {
             } else {
                 ForEach(section.metrics.prefix(maxMetrics)) { MetricLine(metric: $0, accent: accent) }
                 if maxItems > 0, !section.items.isEmpty {
-                    ItemList(items: section.items, limit: maxItems, accent: accent, moreURL: section.url, compact: true)
+                    ItemList(items: section.items, limit: maxItems, accent: accent, moreURL: section.url, compact: true,
+                             workspaceId: workspaceId)
                         .padding(.top, 3)
                 }
             }
@@ -370,6 +378,7 @@ struct SectionView: View {
                              font: family == .systemSmall ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))
                 Spacer(minLength: 2)
                 if family != .systemSmall {
+                    if section.key == "crm", entry.pulse?.section("crm") != nil { AddLeadButton(accent: accent) }
                     Image(systemName: "arrow.up.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
                 }
             }
@@ -419,7 +428,8 @@ struct SectionView: View {
                         StatRow(metrics: Array(metrics.dropFirst(3).prefix(3)), accent: accent)
                     }
                     if n > 0, !section.items.isEmpty {
-                        ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url, compact: !large)
+                        ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url,
+                                 compact: !large, workspaceId: entry.workspaceId)
                     }
                 }
             }

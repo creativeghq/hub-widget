@@ -9,9 +9,18 @@ struct PulseEntry: TimelineEntry {
     let section: SectionKind?
     /// The overview widget is zoomed into this section (an in-widget click), or nil.
     var drill: String? = nil
+    /// Overview only: the sections chosen in Edit Widget; empty = all of them.
+    var only: [String] = []
+    var quickAdd = true
 
     var isStale: Bool { error != nil && pulse != nil }
-    var visibleSections: [PulseSection] { pulse?.orderedSections ?? [] }
+    var visibleSections: [PulseSection] {
+        let all = pulse?.orderedSections ?? []
+        return only.isEmpty ? all : all.filter { only.contains($0.key) }
+    }
+    var workspaceId: String? { pulse?.workspace?.id }
+    /// Adding a lead is offered only to a login that can see CRM.
+    var canAddLead: Bool { quickAdd && pulse?.section("crm") != nil }
     var layout: WidgetLayout { pulse?.layout ?? WidgetLayout() }
 
     static func sample(_ section: SectionKind? = nil) -> PulseEntry {
@@ -31,6 +40,13 @@ enum Refresh {
         return PulseEntry(date: .now, pulse: result.pulse, error: result.error, section: section, drill: drill)
     }
 
+    static func load(_ c: OverviewIntent) async -> PulseEntry {
+        var entry = await load(key: c.apiKey, workspace: c.workspace, section: nil, drill: DrillState.current)
+        entry.only = (c.sections ?? []).map(\.rawValue)
+        entry.quickAdd = c.quickAdd
+        return entry
+    }
+
     static func timeline(_ entry: PulseEntry) -> Timeline<PulseEntry> {
         Timeline(entries: [entry], policy: .after(entry.date.addingTimeInterval(interval)))
     }
@@ -40,13 +56,11 @@ struct OverviewProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> PulseEntry { .sample() }
 
     func snapshot(for configuration: OverviewIntent, in context: Context) async -> PulseEntry {
-        context.isPreview ? .sample() : await Refresh.load(key: configuration.apiKey, workspace: configuration.workspace,
-                                                            section: nil, drill: DrillState.current)
+        context.isPreview ? .sample() : await Refresh.load(configuration)
     }
 
     func timeline(for configuration: OverviewIntent, in context: Context) async -> Timeline<PulseEntry> {
-        Refresh.timeline(await Refresh.load(key: configuration.apiKey, workspace: configuration.workspace,
-                                            section: nil, drill: DrillState.current))
+        Refresh.timeline(await Refresh.load(configuration))
     }
 }
 
@@ -76,6 +90,12 @@ struct OverviewIntent: WidgetConfigurationIntent {
 
     @Parameter(title: "Workspace", description: "Leave empty to use the key's workspace.")
     var workspace: WorkspaceEntity?
+
+    @Parameter(title: "Sections", description: "Pick the sections to show. Leave empty to show every section you can see.")
+    var sections: [SectionKind]?
+
+    @Parameter(title: "Show + Lead button", default: true)
+    var quickAdd: Bool
 }
 
 struct SectionIntent: WidgetConfigurationIntent {
@@ -116,10 +136,11 @@ struct WorkspaceQuery: EntityQuery {
 }
 
 enum SectionKind: String, AppEnum {
-    case tasks, projects, finance, quotes, crm, deals, realestate, warehouse, hr, inbox
+    case today, tasks, projects, finance, quotes, crm, deals, realestate, warehouse, hr, inbox
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Section"
     static var caseDisplayRepresentations: [SectionKind: DisplayRepresentation] = [
+        .today: "Today",
         .tasks: "My tasks",
         .projects: "Projects",
         .finance: "Finance",
@@ -134,6 +155,7 @@ enum SectionKind: String, AppEnum {
 
     var title: String {
         switch self {
+        case .today: return "Today"
         case .tasks: return "My tasks"
         case .projects: return "Projects"
         case .finance: return "Finance"
