@@ -22,9 +22,7 @@ Requires macOS 14 Sonoma or later. Runs on Apple silicon and Intel. Full guide i
 
 ## What's new
 
-- The app reports its real version, so the updater stops offering the same update again (1.2.0 called itself 1.0).
-
-- Click a section in the overview to see its list inside the widget — tasks, projects, pending quotes, invoices, deals, viewings and more. Click a row to open it.
-- Native Mac notifications for your platform notifications (quote accepted, task overdue, new conversation…). Hub Widget now lives in the menu bar and opens at login.
-- The widget measures what fits instead of guessing: nothing is ever cut off. The large overview is now a 2-column tile grid, with sections needing attention first.
-- Updates install automatically from now on. (Coming from 1.0.0: replace the app by hand this one time.)
+- Clearer to click: every section tile has a border and a chevron, and a section that needs attention is tinted in the accent colour.
+- Lists look like lists: rows split by lines, a status tag on each, an arrow showing it opens in Hub, and a "+N more · Open in Hub" line when the list is longer than the widget.
+- Inside a section: the figures sit in boxes above the list, with "All" and "Open" buttons in the header.
+- Bigger, steadier type sizes across every widget size.

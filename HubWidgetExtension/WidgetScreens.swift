@@ -10,9 +10,9 @@ struct FitDown<Content: View>: View {
     let steps: [Int]
     let content: (Int) -> Content
 
-    init(from top: Int, @ViewBuilder content: @escaping (Int) -> Content) {
-        let t = max(1, top)
-        steps = [t, max(1, t - 1), max(1, t - 2), max(1, t - 4), 1]
+    init(from top: Int, floor: Int = 1, @ViewBuilder content: @escaping (Int) -> Content) {
+        let t = max(floor, top)
+        steps = [t, t - 1, t - 2, t - 4, floor].map { max(floor, $0) }
         self.content = content
     }
 
@@ -41,28 +41,49 @@ struct SectionTile: View {
 
     var body: some View {
         Button(intent: OpenSectionIntent(section: section.key)) {
-            VStack(alignment: .leading, spacing: 2) {
-                SectionLabel(section: section, accent: accent, font: .caption2.weight(.semibold))
+            VStack(alignment: .leading, spacing: big ? 3 : 1) {
+                SectionLabel(section: section, accent: accent,
+                             font: big ? .footnote.weight(.semibold) : .caption.weight(.semibold), opens: true)
                 if section.failed {
                     Text("Unknown").font(.callout.weight(.semibold)).foregroundStyle(.secondary)
                 } else if let m = section.headline {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(Fmt.value(m)).font(big ? .title3.weight(.semibold) : .headline).monospacedDigit()
+                        Text(Fmt.value(m)).font(big ? .title2.weight(.semibold) : .headline).monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.7)
                             .foregroundStyle(m.needsAttention ? accent : .primary)
                         Text(m.label).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
                     if secondary, let s = section.metrics.first(where: { $0.key != m.key }) {
-                        Text("\(Fmt.value(s)) \(s.label)").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        Text("\(Fmt.value(s)) \(s.label)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 9)
             .padding(.vertical, big ? 7 : 5)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 9))
+            .tile(accent, attention: section.attentionCount > 0)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// `value label` pairs on one line, e.g. "2 Overdue · 5 Due in 7 days".
+struct InlineMetrics: View {
+    let metrics: [PulseMetric]
+    let accent: Color
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(metrics) { m in
+                HStack(spacing: 3) {
+                    Text(Fmt.value(m)).font(.callout.weight(.semibold)).monospacedDigit()
+                        .foregroundStyle(m.needsAttention ? accent : .primary)
+                    Text(m.label).font(.caption).foregroundStyle(.secondary)
+                }
+                .lineLimit(1)
+            }
+        }
     }
 }
 
@@ -131,15 +152,21 @@ struct OverviewView: View {
 
     private var header: some View {
         HStack(spacing: 6) {
-            Text("Hub").font(.headline)
+            Text("Hub").font(family == .systemMedium ? .subheadline.weight(.bold) : .headline)
             if family == .systemMedium {
                 Text(Fmt.ago(entry.pulse?.asOf)).font(.caption2).foregroundStyle(.tertiary)
             }
             Spacer()
             let n = entry.pulse?.attention ?? 0
-            Text(n == 0 ? "All clear" : "\(n) need\(n == 1 ? "s" : "") attention")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(n == 0 ? Color.secondary : accent)
+            if n == 0 {
+                Label("All clear", systemImage: "checkmark.circle").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            } else {
+                Text("\(n) need\(n == 1 ? "s" : "") attention")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(accent)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 5))
+            }
         }
     }
 
@@ -148,7 +175,7 @@ struct OverviewView: View {
         let columns = max(1, FitLimits.clamp(size.columns, 3, max: FitLimits.overviewMedium.columns))
         let top = FitLimits.clamp(size.maxSections, 6, max: FitLimits.overviewMedium.sections)
         return FitDown(from: top) { n in
-            SectionGrid(sections: Array(sections.prefix(n)), columns: columns) {
+            SectionGrid(sections: Array(sections.prefix(n)), columns: columns, hSpacing: 6, vSpacing: 6) {
                 SectionTile(section: $0, accent: accent)
             }
         }
@@ -159,10 +186,17 @@ struct OverviewView: View {
         let columns = max(1, FitLimits.clamp(size.columns, 2, max: FitLimits.overviewLarge.columns))
         let top = FitLimits.clamp(size.maxSections, 8, max: FitLimits.overviewLarge.sections)
         let secondary = (size.metrics ?? 2) > 1
-        return FitDown(from: top) { n in
-            SectionGrid(sections: Array(sections.prefix(n)), columns: columns) {
-                SectionTile(section: $0, accent: accent, big: true, secondary: secondary)
-            }
+        return ViewThatFits(in: .vertical) {
+            largeTileGrid(top, columns: columns, secondary: secondary)
+            largeTileGrid(top, columns: columns, secondary: false)
+            largeTileGrid(max(1, top - 2), columns: columns, secondary: false)
+            largeTileGrid(max(1, top - 4), columns: columns, secondary: false)
+        }
+    }
+
+    private func largeTileGrid(_ count: Int, columns: Int, secondary: Bool) -> some View {
+        SectionGrid(sections: Array(sections.prefix(count)), columns: columns) {
+            SectionTile(section: $0, accent: accent, big: true, secondary: secondary)
         }
     }
 
@@ -171,17 +205,20 @@ struct OverviewView: View {
         let top = FitLimits.clamp(size.maxSections, 6, max: FitLimits.overviewLarge.sections)
         let metrics = FitLimits.clamp(size.metrics, 3, max: FitLimits.overviewLarge.metrics)
         return FitDown(from: top) { n in
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 ForEach(sections.prefix(n)) { section in
                     Button(intent: OpenSectionIntent(section: section.key)) {
                         VStack(alignment: .leading, spacing: 2) {
-                            SectionLabel(section: section, accent: accent)
+                            SectionLabel(section: section, accent: accent, opens: true)
                             if section.failed {
                                 FailedNote(text: section.note)
                             } else {
-                                MetricStrip(metrics: Array(section.metrics.prefix(metrics)), accent: accent)
+                                InlineMetrics(metrics: Array(section.metrics.prefix(metrics)), accent: accent)
                             }
                         }
+                        .padding(.horizontal, 9).padding(.vertical, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .tile(accent, attention: section.attentionCount > 0)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -207,10 +244,12 @@ struct OverviewView: View {
     }
 
     private func cardGrid(_ count: Int, columns: Int, metrics: Int, items: Int) -> some View {
-        SectionGrid(sections: Array(sections.prefix(count)), columns: columns, hSpacing: 14, vSpacing: 10) { section in
+        SectionGrid(sections: Array(sections.prefix(count)), columns: columns, hSpacing: 10, vSpacing: 10) { section in
             Button(intent: OpenSectionIntent(section: section.key)) {
-                SectionCard(section: section, accent: accent, maxMetrics: metrics, maxItems: items)
+                SectionCard(section: section, accent: accent, maxMetrics: metrics, maxItems: items, opens: true)
+                    .padding(.horizontal, 10).padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .tile(accent, attention: section.attentionCount > 0)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -236,17 +275,16 @@ struct DrillView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 8) {
                 Button(intent: CloseSectionIntent()) {
-                    Label("All", systemImage: "chevron.left").font(.caption.weight(.semibold))
+                    HeaderChip(text: "All", symbol: "chevron.left", accent: accent)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(accent)
                 SectionLabel(section: section, accent: accent, font: .subheadline.weight(.semibold))
-                Spacer()
+                Spacer(minLength: 4)
                 Link(destination: HubStore.widgetLink(section.url)) {
-                    Image(systemName: "arrow.up.right.square").font(.caption)
+                    HeaderChip(text: "Open", symbol: "arrow.up.right", accent: accent, trailingSymbol: true)
                 }
             }
             list.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -261,13 +299,22 @@ struct DrillView: View {
             FailedNote(text: section.note)
         } else {
             let metrics = Array(section.metrics.prefix(family == .systemMedium ? 2 : 3))
-            FitDown(from: itemLimit + 1) { n in
-                VStack(alignment: .leading, spacing: 5) {
-                    MetricStrip(metrics: metrics, accent: accent)
-                    if section.items.isEmpty {
-                        Text("Nothing waiting here right now.").font(.caption).foregroundStyle(.secondary)
-                    } else {
-                        ForEach(section.items.prefix(max(0, n - 1))) { ItemRow(item: $0, accent: accent) }
+            if section.items.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    StatRow(metrics: metrics, accent: accent)
+                    Label("Nothing waiting here right now.", systemImage: "checkmark.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else if family == .systemMedium {
+                // Too short for figures and a list together; the list is what was clicked for.
+                FitDown(from: itemLimit) { n in
+                    ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url, compact: true)
+                }
+            } else {
+                FitDown(from: itemLimit) { n in
+                    VStack(alignment: .leading, spacing: 8) {
+                        StatRow(metrics: metrics, accent: accent)
+                        ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url)
                     }
                 }
             }
@@ -280,15 +327,19 @@ struct SectionCard: View {
     let accent: Color
     var maxMetrics = 6
     var maxItems = 3
+    var opens = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            SectionLabel(section: section, accent: accent)
+            SectionLabel(section: section, accent: accent, opens: opens)
             if section.failed {
                 FailedNote(text: section.note)
             } else {
                 ForEach(section.metrics.prefix(maxMetrics)) { MetricLine(metric: $0, accent: accent) }
-                ForEach(section.items.prefix(maxItems)) { ItemRow(item: $0, accent: accent) }
+                if maxItems > 0, !section.items.isEmpty {
+                    ItemList(items: section.items, limit: maxItems, accent: accent, moreURL: section.url, compact: true)
+                        .padding(.top, 3)
+                }
             }
         }
     }
@@ -313,8 +364,15 @@ struct SectionView: View {
     }
 
     private func content(_ section: PulseSection) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            SectionLabel(section: section, accent: accent)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                SectionLabel(section: section, accent: accent,
+                             font: family == .systemSmall ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))
+                Spacer(minLength: 2)
+                if family != .systemSmall {
+                    Image(systemName: "arrow.up.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+                }
+            }
             detail(section).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             if family == .systemLarge {
                 Footer(entry: entry, accent: accent)
@@ -338,22 +396,32 @@ struct SectionView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     if let lead = section.headline {
                         Text(Fmt.value(lead))
-                            .font(.title2.weight(.semibold)).monospacedDigit()
-                            .minimumScaleFactor(0.6).lineLimit(1)
+                            .font(.title.weight(.semibold)).monospacedDigit()
+                            .minimumScaleFactor(0.5).lineLimit(1)
                             .foregroundStyle(lead.needsAttention ? accent : .primary)
-                        Text(lead.label).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        Text(lead.label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
+                    if n > 1 { Divider().overlay(Look.hairline).padding(.vertical, 2) }
                     ForEach(others.prefix(max(0, n - 1))) { MetricLine(metric: $0, accent: accent) }
                 }
             }
         } else {
-            let limit = family == .systemLarge ? FitLimits.sectionLarge : FitLimits.sectionMedium
-            let size = family == .systemLarge ? sizes.large : sizes.medium
-            let metrics = max(1, FitLimits.clamp(size.metrics, limit.metrics, max: limit.metrics))
+            let large = family == .systemLarge
+            let limit = large ? FitLimits.sectionLarge : FitLimits.sectionMedium
+            let size = large ? sizes.large : sizes.medium
+            let metricCount = max(1, FitLimits.clamp(size.metrics, limit.metrics, max: limit.metrics))
+            let metrics = Array(section.metrics.prefix(metricCount))
             let items = FitLimits.clamp(size.items, limit.items, max: limit.items)
-            FitDown(from: metrics + items) { n in
-                SectionCard(section: section, accent: accent,
-                            maxMetrics: min(metrics, n), maxItems: max(0, n - metrics))
+            FitDown(from: items, floor: 0) { n in
+                VStack(alignment: .leading, spacing: 7) {
+                    StatRow(metrics: Array(metrics.prefix(3)), accent: accent)
+                    if large, metrics.count > 3 {
+                        StatRow(metrics: Array(metrics.dropFirst(3).prefix(3)), accent: accent)
+                    }
+                    if n > 0, !section.items.isEmpty {
+                        ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url, compact: !large)
+                    }
+                }
             }
         }
     }
