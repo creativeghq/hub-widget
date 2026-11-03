@@ -55,19 +55,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     // MARK: Menu-bar panel
 
     private func setUpStatusItem() {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.target = self
         item.button?.action = #selector(togglePanel)
         statusItem = item
         updateIcon()
         popover.behavior = .transient
         popover.animates = true
-        popover.contentViewController = NSHostingController(rootView: PanelView(delegate: self))
+        let host = NSHostingController(rootView: PanelView(delegate: self))
+        // The panel follows its content: home is short, the lead form is tall.
+        host.sizingOptions = [.preferredContentSize]
+        popover.contentViewController = host
     }
 
+    /// The MH mark (a template image, so macOS tints it for light and dark menu bars) plus the unread count.
     private func updateIcon() {
-        let name = unread > 0 ? "square.grid.2x2.fill" : "square.grid.2x2"
-        statusItem?.button?.image = NSImage(systemSymbolName: name, accessibilityDescription: "Hub")
+        guard let button = statusItem?.button else { return }
+        let mark = NSImage(named: "MenuBarIcon")
+        mark?.isTemplate = true
+        mark?.accessibilityDescription = "Hub"
+        button.image = mark
+        button.imagePosition = .imageLeading
+        button.title = unread > 0 ? " \(unread)" : ""
     }
 
     @objc private func togglePanel() {
@@ -190,7 +199,7 @@ struct PanelView: View {
         Group {
             switch delegate.panelMode {
             case .home: home
-            case .newLead: QuickLeadView(delegate: delegate) { delegate.closePanel() }
+            case .newLead: QuickLeadView(delegate: delegate) { delegate.closePanel() }.frame(height: 560)
             }
         }
         .frame(width: 340)

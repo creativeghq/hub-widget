@@ -22,6 +22,7 @@ Requires macOS 14 Sonoma or later. Runs on Apple silicon and Intel. Full guide i
 
 ## What's new
 
-- **+ Lead always shows** on the overview, the CRM widget and inside CRM whenever your role can see CRM (1.4.0 could hide it on widgets set up before the update).
-- **No more windows:** + Lead now opens a panel that drops down from the Hub icon in the menu bar and closes when you click away. Clicking the Hub icon shows the same panel with your recent notifications, New lead, Open platform, Settings and Updates.
-- From 1.4.0: tick off tasks in the widget, the Today tile, every section fits, and a Sections picker in Edit Widget.
+- **MH logo in the menu bar** instead of the grid symbol, with the unread count next to it.
+- **New lead from the menu bar shows every field** — the panel now resizes to the form (it kept the small size it opened at, so only Name fit).
+- **A refused API key is said out loud.** When the widget's key has been replaced, the widget now tells you to paste the new one instead of quietly showing old figures.
+- **Mac notifications work again** — the timestamp the app sent lost its `+` on the way, so every check was refused.

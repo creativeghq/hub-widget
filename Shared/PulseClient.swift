@@ -11,7 +11,7 @@ enum PulseError: LocalizedError, Equatable {
         switch self {
         case .noKey: return "Right-click this widget → Edit Widget, and paste your kai_ API key."
         case .badURL: return "The API address is not a valid URL."
-        case .http(401, _): return "The API key was refused. Check it is active in Profile → Keys."
+        case .http(401, _): return "This widget's API key was refused — it may have been replaced. Right-click the widget → Edit Widget and paste your current kai_ key."
         case .http(404, _): return "That workspace was not found for this key."
         case .http(let code, let msg): return "The platform answered \(code): \(msg)"
         case .transport(let msg): return "Could not reach the platform: \(msg)"
@@ -62,7 +62,11 @@ struct PulseClient {
     private func send(query: [URLQueryItem], body: [String: Any]?) async throws -> Data {
         guard !apiKey.isEmpty else { throw PulseError.noKey }
         guard var comps = URLComponents(string: apiBase + "/workspace-pulse") else { throw PulseError.badURL }
-        if !query.isEmpty { comps.queryItems = query }
+        if !query.isEmpty {
+            comps.queryItems = query
+            // URLComponents leaves `+` alone and servers read it as a space: `+00:00` offsets broke `since`.
+            comps.percentEncodedQuery = comps.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+        }
         guard let url = comps.url else { throw PulseError.badURL }
 
         var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
@@ -104,6 +108,9 @@ struct PulseClient {
             HubStore.rememberedKey = key
             HubStore.storeCache(pulse, key: key, workspaceId: workspaceId)
             return (pulse, nil)
+        } catch PulseError.http(401, let message) {
+            // A refused key is not "offline": old figures under it would look current, so show none.
+            return (nil, PulseError.http(401, message).localizedDescription)
         } catch {
             return (HubStore.cachedPulse(key: key, workspaceId: workspaceId), error.localizedDescription)
         }

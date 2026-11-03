@@ -124,4 +124,20 @@ final class PulseTests: XCTestCase {
         XCTAssertEqual(p["follow_up_on"] as? String, "2026-11-04", "the local day, not the UTC one")
         XCTAssertEqual(p["source"] as? String, "phone")
     }
+
+    func testATimestampCursorKeepsItsPlusSign() async throws {
+        final class Capture: URLProtocol {
+            nonisolated(unsafe) static var url: URL?
+            override class func canInit(with request: URLRequest) -> Bool { url = request.url; return true }
+            override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+            override func startLoading() { client?.urlProtocol(self, didFailWithError: URLError(.cancelled)) }
+            override func stopLoading() {}
+        }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [Capture.self]
+        let client = PulseClient(apiKey: "kai_test", session: URLSession(configuration: config))
+        _ = try? await client.notifications(since: "2026-11-03T05:11:10.552375+00:00")
+        let query = try XCTUnwrap(Capture.url?.query(percentEncoded: true))
+        XCTAssertTrue(query.contains("%2B00:00") || query.contains("%2B00%3A00"), query)
+    }
 }
