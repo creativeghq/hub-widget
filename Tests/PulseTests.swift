@@ -102,6 +102,16 @@ final class PulseTests: XCTestCase {
         XCTAssertEqual(item.value, 1200.5)
     }
 
+    func testNotificationsCarryTheirCategory() throws {
+        let json = #"{"notifications":[{"id":"a","type":"warning","title":"Unmatched bank payment","category":"finance"},"#
+            + #"{"id":"b","title":"Old server"}],"cursor":null}"#
+        let feed = try JSONDecoder().decode(NotificationFeed.self, from: Data(json.utf8))
+        XCTAssertEqual(feed.notifications.map(\.category), ["finance", nil])
+        XCTAssertEqual(SectionStyle.label("finance"), "Finance")
+        XCTAssertEqual(SectionStyle.symbol("jobs"), "briefcase")
+        XCTAssertNil(SectionStyle.label(nil), "no category = no subtitle, not a made-up one")
+    }
+
     func testTasksCarryTheServersDayBuckets() throws {
         let json = #"{"key":"tasks","title":"My tasks","status":"ok","url":"/projects/my-tasks","metrics":[],"#
             + #""filters":[{"key":"overdue","label":"Overdue","count":2},{"key":"today","label":"Today","count":0}],"#

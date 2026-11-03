@@ -142,9 +142,11 @@ struct PlatformNotification: Decodable, Identifiable {
     let body: String?
     let actionUrl: String?
     let createdAt: String?
+    /// The platform area it is about (see `SectionStyle`), derived on the server.
+    let category: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, type, title, body
+        case id, type, title, body, category
         case actionUrl = "action_url"
         case createdAt = "created_at"
     }

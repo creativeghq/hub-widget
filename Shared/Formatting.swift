@@ -90,7 +90,58 @@ enum SectionStyle {
         case "warehouse": return "shippingbox"
         case "hr": return "person.badge.clock"
         case "inbox": return "tray"
+        case "jobs": return "briefcase"
+        case "marketing": return "megaphone"
+        case "agent": return "sparkles"
+        case "social": return "bubble.left.and.bubble.right"
+        case "updates": return "gift"
+        case "system": return "gearshape"
+        case "account": return "person.crop.circle"
+        case "general": return "bell"
         default: return "square.grid.2x2"
+        }
+    }
+
+    /// A notification category's name, for the banner subtitle.
+    static func label(_ key: String?) -> String? {
+        switch key {
+        case "inbox": return "Inbox"
+        case "crm": return "CRM"
+        case "finance": return "Finance"
+        case "quotes": return "Quotes"
+        case "projects": return "Projects"
+        case "tasks": return "Tasks"
+        case "warehouse": return "Warehouse"
+        case "hr": return "HR"
+        case "realestate": return "Real estate"
+        case "deals": return "Deals"
+        case "jobs": return "Jobs"
+        case "marketing": return "Marketing"
+        case "agent": return "Assistant"
+        case "social": return "Social"
+        case "updates": return "What's new"
+        case "system": return "System"
+        case "account": return "Account"
+        default: return nil
+        }
+    }
+
+    /// A notification category's own colour, so the list can be scanned by area.
+    static func tint(_ key: String?) -> Color {
+        switch key {
+        case "inbox": return .blue
+        case "crm", "deals": return .teal
+        case "finance": return .green
+        case "quotes": return .indigo
+        case "projects", "tasks": return .orange
+        case "warehouse": return .brown
+        case "hr": return .pink
+        case "realestate": return .purple
+        case "jobs": return .mint
+        case "marketing": return .red
+        case "agent": return .cyan
+        case "social": return .blue
+        default: return .gray
         }
     }
 

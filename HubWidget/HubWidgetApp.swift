@@ -160,9 +160,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     private func post(_ n: PlatformNotification) async {
         let content = UNMutableNotificationContent()
         content.title = n.title ?? "Hub"
+        if let area = SectionStyle.label(n.category) { content.subtitle = area }
         if let body = n.body { content.body = body }
         content.sound = .default
-        content.threadIdentifier = n.type ?? "hub"
+        content.threadIdentifier = n.category ?? n.type ?? "hub"
         if let url = n.actionUrl { content.userInfo = ["path": url] }
         try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: n.id, content: content, trigger: nil))
     }
@@ -227,9 +228,12 @@ struct PanelView: View {
                         if let url = DeepLink.webURL(n.actionUrl) { NSWorkspace.shared.open(url) }
                         delegate.closePanel()
                     } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(n.title ?? "Notification").font(.callout.weight(.medium)).lineLimit(1)
-                            if let body = n.body { Text(body).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                        HStack(alignment: .top, spacing: 9) {
+                            CategoryBadge(category: n.category)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(n.title ?? "Notification").font(.callout.weight(.medium)).lineLimit(1)
+                                if let body = n.body { Text(body).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12).padding(.vertical, 6)
@@ -272,5 +276,20 @@ enum DeepLink {
         guard let path, !path.isEmpty else { return URL(string: HubStore.appBase) }
         if path.hasPrefix("https://") { return URL(string: path) }
         return HubStore.appURL(path)
+    }
+}
+
+/// The area a notification is about, as a tinted icon in front of it.
+struct CategoryBadge: View {
+    let category: String?
+
+    var body: some View {
+        let tint = SectionStyle.tint(category)
+        Image(systemName: SectionStyle.symbol(category ?? "general"))
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: 24, height: 24)
+            .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+            .help(SectionStyle.label(category) ?? "Notification")
     }
 }
