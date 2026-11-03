@@ -53,6 +53,8 @@ struct PulseSection: Codable, Equatable, Identifiable {
     let note: String?
     let metrics: [PulseMetric]
     let items: [PulseItem]
+    /// My tasks only: the day buckets with their counts, derived on the server.
+    let filters: [PulseFilter]
 
     var id: String { key }
     var failed: Bool { status != "ok" }
@@ -67,6 +69,7 @@ struct PulseSection: Codable, Equatable, Identifiable {
         note = try c.decodeIfPresent(String.self, forKey: .note)
         metrics = try c.decodeIfPresent([PulseMetric].self, forKey: .metrics) ?? []
         items = try c.decodeIfPresent([PulseItem].self, forKey: .items) ?? []
+        filters = (try? c.decodeIfPresent([PulseFilter].self, forKey: .filters)) ?? []
     }
 }
 
@@ -86,6 +89,15 @@ struct PulseMetric: Codable, Equatable, Identifiable {
     var isMoney: Bool { kind == "money" }
 }
 
+/// One day bucket of My tasks: `overdue`, `today`, `tomorrow`, `week` or `later`.
+struct PulseFilter: Codable, Equatable, Identifiable {
+    let key: String
+    let label: String
+    let count: Int
+
+    var id: String { key }
+}
+
 struct PulseItem: Codable, Equatable, Identifiable {
     let title: String
     let subtitle: String?
@@ -99,9 +111,11 @@ struct PulseItem: Codable, Equatable, Identifiable {
     let recordId: String?
     /// `complete_task`, or nil when the row only opens.
     let action: String?
+    /// Tasks only: the server's day bucket (see `PulseFilter`).
+    let bucket: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, subtitle, status, date, url, tone, value, currency, action
+        case title, subtitle, status, date, url, tone, value, currency, action, bucket
         case recordId = "id"
     }
 

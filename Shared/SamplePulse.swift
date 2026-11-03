@@ -6,7 +6,14 @@ enum SamplePulse {
     {"ok":true,"workspace":{"id":"00000000-0000-0000-0000-000000000000","name":"Your workspace"},
      "as_of":"2026-11-02T09:00:00+00:00","attention":4,
      "sections":[
-      {"key":"tasks","title":"My tasks","status":"ok","url":"/projects/my-tasks","items":[],"metrics":[
+      {"key":"tasks","title":"My tasks","status":"ok","url":"/projects/my-tasks",
+       "filters":[{"key":"overdue","label":"Overdue","count":2},{"key":"today","label":"Today","count":1},
+                  {"key":"tomorrow","label":"Tomorrow","count":1},{"key":"week","label":"This week","count":3},
+                  {"key":"later","label":"Later","count":7}],
+       "items":[{"title":"Measure Kifisia kitchen","subtitle":"Kifisia kitchen","date":"2026-10-30","tone":"attention","bucket":"overdue"},
+                {"title":"Order worktop","subtitle":"Glyfada villa","date":"2026-11-02","bucket":"today"},
+                {"title":"Send tile samples","subtitle":"Glyfada villa","date":"2026-11-03","bucket":"tomorrow"}],
+       "metrics":[
         {"key":"overdue","label":"Overdue","value":2,"kind":"count","tone":"attention"},
         {"key":"due_soon","label":"Due in 7 days","value":5,"kind":"count","tone":"neutral"},
         {"key":"open","label":"Open","value":14,"kind":"count","tone":"neutral"}]},
@@ -20,6 +27,10 @@ enum SamplePulse {
         {"key":"overdue_invoices","label":"Overdue invoices","value":3,"kind":"count","tone":"attention"},
         {"key":"mydata_failed","label":"myDATA not accepted","value":0,"kind":"count","tone":"neutral"},
         {"key":"supplier_docs_new","label":"Supplier documents to file","value":12,"kind":"count","tone":"neutral"}]},
+      {"key":"crm","title":"CRM","status":"ok","url":"/crm?tab=leads","metrics":[
+        {"key":"new_leads","label":"New leads","value":3,"kind":"count","tone":"attention"}],
+       "items":[{"title":"Maria Papadopoulou","subtitle":"Bathroom renovation","date":"2026-11-02","tone":"attention"},
+                {"title":"Nikos Georgiou","subtitle":"Kitchen quote","date":"2026-11-01"}]},
       {"key":"deals","title":"Deals","status":"ok","url":"/crm?tab=pipeline","items":[],"metrics":[
         {"key":"open","label":"Open deals","value":9,"kind":"count","tone":"neutral"},
         {"key":"weighted","label":"Weighted pipeline","value":126000,"kind":"money","currency":"EUR","tone":"neutral"},

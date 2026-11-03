@@ -34,6 +34,33 @@ struct OpenSectionIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         DrillState.set(section)
+        if section == "tasks" { TaskFilterState.set(nil) }
+        return .result()
+    }
+}
+
+/// The day bucket the task board shows; nil = all of them.
+enum TaskFilterState {
+    private static let key = "tasks.filter"
+
+    static var current: String? { UserDefaults.standard.string(forKey: key) }
+
+    static func set(_ filter: String?) { UserDefaults.standard.set(filter, forKey: key) }
+}
+
+struct SetTaskFilterIntent: AppIntent {
+    static var title: LocalizedStringResource = "Filter tasks"
+    static var isDiscoverable = false
+
+    /// A bucket key, or `all`.
+    @Parameter(title: "Filter")
+    var filter: String
+
+    init() {}
+    init(filter: String) { self.filter = filter }
+
+    func perform() async throws -> some IntentResult {
+        TaskFilterState.set(filter == "all" ? nil : filter)
         return .result()
     }
 }

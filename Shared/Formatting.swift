@@ -40,6 +40,16 @@ enum Fmt {
 }
 
 extension Fmt {
+    /// A task's due line from the server's bucket: "Overdue · 31 Oct", "Today", "Tomorrow", "6 Nov".
+    static func due(_ item: PulseItem) -> String {
+        switch item.bucket {
+        case "overdue": return ["Overdue", day(item.date)].compactMap { $0 }.joined(separator: " · ")
+        case "today": return "Today"
+        case "tomorrow": return "Tomorrow"
+        default: return day(item.date) ?? "No date"
+        }
+    }
+
     /// `in_progress` → `In progress`.
     static func status(_ raw: String?) -> String? {
         guard let raw, !raw.isEmpty else { return nil }

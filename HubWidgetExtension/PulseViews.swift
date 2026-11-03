@@ -33,12 +33,13 @@ struct SectionLabel: View {
     var font: Font = .footnote.weight(.semibold)
     /// Shows the chevron that says "this opens".
     var opens = false
+    var title: String? = nil
 
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: SectionStyle.symbol(section.key))
                 .foregroundStyle(section.attentionCount > 0 ? accent : .secondary)
-            Text(section.title).lineLimit(1)
+            Text(title ?? section.title).lineLimit(1)
             if opens {
                 Spacer(minLength: 2)
                 Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
@@ -191,6 +192,153 @@ struct ItemList: View {
         }
         .padding(.vertical, 2)
         .tile(accent)
+    }
+}
+
+/// A two-line row for a half-width panel: tick box (tasks) or bar, title, then due date or detail.
+struct MiniRow: View {
+    let item: PulseItem
+    let accent: Color
+    var workspaceId: String? = nil
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            if item.canComplete, let id = item.recordId {
+                Button(intent: CompleteTaskIntent(taskId: id, workspaceId: workspaceId)) {
+                    Image(systemName: "circle").font(.footnote)
+                        .foregroundStyle(item.needsAttention ? accent : .secondary)
+                        .frame(width: 15, height: 15).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            } else {
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(item.needsAttention ? accent : Color.secondary.opacity(0.35))
+                    .frame(width: 3, height: 24)
+            }
+            Link(destination: HubStore.widgetLink(item.url)) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(item.title).font(.caption.weight(.medium)).lineLimit(1)
+                    Text(detail).font(.caption2).lineLimit(1)
+                        .foregroundStyle(item.needsAttention && item.bucket != nil ? accent : .secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private var detail: String {
+        item.bucket != nil ? Fmt.due(item) : (item.subtitle ?? Fmt.day(item.date) ?? "")
+    }
+}
+
+/// A section shown as its list: the header zooms the widget into it, each row opens the record.
+struct ListPanel: View {
+    let section: PulseSection
+    let accent: Color
+    let rows: Int
+    var workspaceId: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Button(intent: OpenSectionIntent(section: section.key)) {
+                HStack(spacing: 4) {
+                    SectionLabel(section: section, accent: accent, font: .caption.weight(.semibold),
+                                 title: section.key == "crm" ? "Leads" : nil)
+                    Spacer(minLength: 2)
+                    if let m = section.headline, !section.failed {
+                        Text(Fmt.value(m)).font(.caption.weight(.bold)).monospacedDigit()
+                            .foregroundStyle(m.needsAttention ? accent : .secondary)
+                    }
+                    Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if section.failed {
+                FailedNote(text: section.note)
+            } else if section.items.isEmpty {
+                Text(section.key == "tasks" ? "No open tasks" : "Nothing new").font(.caption2).foregroundStyle(.secondary)
+                    .padding(.vertical, 3)
+            } else {
+                ForEach(Array(section.items.prefix(rows).enumerated()), id: \.element.id) { index, item in
+                    if index > 0 { Divider().overlay(Look.hairline) }
+                    MiniRow(item: item, accent: accent, workspaceId: workspaceId)
+                }
+            }
+        }
+        .padding(.horizontal, 8).padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .tile(accent, attention: section.attentionCount > 0)
+    }
+}
+
+/// One day filter on the task board, with the server's count.
+struct FilterChip: View {
+    let label: String
+    let count: Int
+    let filter: String
+    let selected: Bool
+    let accent: Color
+    var attention = false
+
+    var body: some View {
+        Button(intent: SetTaskFilterIntent(filter: filter)) {
+            HStack(spacing: 3) {
+                Text(label)
+                if count > 0 {
+                    Text("\(count)").monospacedDigit()
+                        .foregroundStyle(attention || selected ? accent : .secondary)
+                }
+            }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(selected ? accent : .primary)
+            .padding(.horizontal, 6).padding(.vertical, 3)
+            .background(selected ? accent.opacity(0.16) : Look.fill, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(selected ? accent.opacity(0.5) : Look.hairline, lineWidth: 0.75))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A task as a card: tick box, title, project, due line.
+struct TaskCard: View {
+    let item: PulseItem
+    let accent: Color
+    var workspaceId: String? = nil
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            if item.canComplete, let id = item.recordId {
+                Button(intent: CompleteTaskIntent(taskId: id, workspaceId: workspaceId)) {
+                    Image(systemName: "circle").font(.callout)
+                        .foregroundStyle(item.needsAttention ? accent : .secondary)
+                        .frame(width: 17, height: 17).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            Link(destination: HubStore.widgetLink(item.url)) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title).font(.caption.weight(.semibold)).lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    if let project = item.subtitle, !project.isEmpty {
+                        Text(project).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Label(Fmt.due(item), systemImage: "calendar")
+                        .font(.caption2.weight(.medium)).lineLimit(1)
+                        .foregroundStyle(item.needsAttention ? accent : .secondary)
+                        .padding(.top, 1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+        }
+        .padding(7)
+        .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
+        .tile(accent, attention: item.needsAttention)
     }
 }
 

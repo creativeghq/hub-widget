@@ -102,6 +102,21 @@ final class PulseTests: XCTestCase {
         XCTAssertEqual(item.value, 1200.5)
     }
 
+    func testTasksCarryTheServersDayBuckets() throws {
+        let json = #"{"key":"tasks","title":"My tasks","status":"ok","url":"/projects/my-tasks","metrics":[],"#
+            + #""filters":[{"key":"overdue","label":"Overdue","count":2},{"key":"today","label":"Today","count":0}],"#
+            + #""items":[{"title":"Fit doors","date":"2026-10-31","tone":"attention","bucket":"overdue"},"#
+            + #"{"title":"Order worktop","date":"2026-11-03","bucket":"today"},{"title":"Later one","date":"2026-11-30","bucket":"later"}]}"#
+        let section = try JSONDecoder.pulse.decode(PulseSection.self, from: Data(json.utf8))
+        XCTAssertEqual(section.filters.map(\.key), ["overdue", "today"])
+        XCTAssertEqual(section.filters.first?.count, 2)
+        XCTAssertEqual(section.items.map(\.bucket), ["overdue", "today", "later"])
+        XCTAssertTrue(Fmt.due(section.items[0]).hasPrefix("Overdue"))
+        XCTAssertEqual(Fmt.due(section.items[1]), "Today")
+        let other = try JSONDecoder.pulse.decode(PulseSection.self, from: Data(#"{"key":"crm","filters":null}"#.utf8))
+        XCTAssertEqual(other.filters, [], "a section without day buckets decodes with none")
+    }
+
     func testARefusedWidgetKeyFallsBackToTheAppKey() {
         XCTAssertEqual(PulseClient.candidateKeys(configured: "kai_old", appKey: "kai_new", remembered: "kai_old"),
                        ["kai_old", "kai_new"])

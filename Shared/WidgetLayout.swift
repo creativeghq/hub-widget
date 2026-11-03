@@ -97,7 +97,7 @@ enum FitLimits {
     struct Limit { let sections: Int; let columns: Int; let metrics: Int; let items: Int }
 
     static let overviewMedium = Limit(sections: 6, columns: 3, metrics: 1, items: 0)
-    static let overviewLarge = Limit(sections: 12, columns: 3, metrics: 3, items: 0)
+    static let overviewLarge = Limit(sections: 12, columns: 2, metrics: 3, items: 0)
     static let overviewExtraLarge = Limit(sections: 12, columns: 3, metrics: 3, items: 2)
     static let sectionSmall = Limit(sections: 1, columns: 1, metrics: 3, items: 0)
     static let sectionMedium = Limit(sections: 1, columns: 1, metrics: 3, items: 2)

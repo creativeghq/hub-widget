@@ -87,16 +87,16 @@ struct InlineMetrics: View {
     }
 }
 
-struct SectionGrid<Cell: View>: View {
-    let sections: [PulseSection]
+struct TileGrid<Item: Identifiable, Cell: View>: View {
+    let items: [Item]
     let columns: Int
     var hSpacing: CGFloat = 8
     var vSpacing: CGFloat = 8
-    @ViewBuilder let cell: (PulseSection) -> Cell
+    @ViewBuilder let cell: (Item) -> Cell
 
     var body: some View {
         Grid(alignment: .topLeading, horizontalSpacing: hSpacing, verticalSpacing: vSpacing) {
-            ForEach(Array(chunked(sections, columns).enumerated()), id: \.offset) { _, row in
+            ForEach(Array(chunked(items, columns).enumerated()), id: \.offset) { _, row in
                 GridRow {
                     ForEach(row) { cell($0) }
                     ForEach(0..<max(0, columns - row.count), id: \.self) { _ in
@@ -176,29 +176,45 @@ struct OverviewView: View {
         let columns = max(1, FitLimits.clamp(size.columns, 3, max: FitLimits.overviewMedium.columns))
         let top = FitLimits.clamp(size.maxSections, 6, max: FitLimits.overviewMedium.sections)
         return FitDown(from: top) { n in
-            SectionGrid(sections: Array(sections.prefix(n)), columns: columns, hSpacing: 6, vSpacing: 6) {
+            TileGrid(items: Array(sections.prefix(n)), columns: columns, hSpacing: 6, vSpacing: 6) {
                 SectionTile(section: $0, accent: accent)
             }
         }
     }
 
+    /// Shown as lists across the top of the large overview, in this order.
+    static let listKeys = ["tasks", "crm"]
+
+    /// My tasks and leads as lists side by side, every other section as tiles in columns under them.
     private var largeTiles: some View {
         let size = entry.layout.overview.large
         let columns = max(1, FitLimits.clamp(size.columns, 2, max: FitLimits.overviewLarge.columns))
         let top = FitLimits.clamp(size.maxSections, 8, max: FitLimits.overviewLarge.sections)
         let secondary = (size.metrics ?? 2) > 1
+        let lists = Self.listKeys.compactMap { key in sections.first { $0.key == key } }
+        let tiles = sections.filter { !Self.listKeys.contains($0.key) }
         return ViewThatFits(in: .vertical) {
-            largeTileGrid(top, columns: columns, big: true, secondary: secondary)
-            largeTileGrid(top, columns: columns, big: true, secondary: false)
-            largeTileGrid(top, columns: columns, big: false, secondary: false)
-            largeTileGrid(top, columns: 3, big: false, secondary: false)
-            largeTileGrid(max(1, top - 3), columns: 3, big: false, secondary: false)
+            largeLayout(lists, rows: 3, tiles, top, columns: columns, big: true, secondary: secondary)
+            largeLayout(lists, rows: 3, tiles, top, columns: columns, big: true, secondary: false)
+            largeLayout(lists, rows: 3, tiles, top, columns: columns, big: false, secondary: false)
+            largeLayout(lists, rows: 2, tiles, top, columns: columns, big: false, secondary: false)
+            largeLayout(lists, rows: 2, tiles, max(2, top - 4), columns: columns, big: false, secondary: false)
+            largeLayout(lists, rows: 2, tiles, 4, columns: columns, big: false, secondary: false)
+            largeLayout(lists, rows: 1, tiles, 2, columns: columns, big: false, secondary: false)
         }
     }
 
-    private func largeTileGrid(_ count: Int, columns: Int, big: Bool, secondary: Bool) -> some View {
-        SectionGrid(sections: Array(sections.prefix(count)), columns: columns, hSpacing: big ? 8 : 6, vSpacing: big ? 8 : 6) {
-            SectionTile(section: $0, accent: accent, big: big, secondary: secondary)
+    private func largeLayout(_ lists: [PulseSection], rows: Int, _ tiles: [PulseSection], _ count: Int,
+                             columns: Int, big: Bool, secondary: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !lists.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(lists) { ListPanel(section: $0, accent: accent, rows: rows, workspaceId: entry.workspaceId) }
+                }
+            }
+            TileGrid(items: Array(tiles.prefix(count)), columns: columns, hSpacing: big ? 8 : 6, vSpacing: big ? 8 : 6) {
+                SectionTile(section: $0, accent: accent, big: big, secondary: secondary)
+            }
         }
     }
 
@@ -246,7 +262,7 @@ struct OverviewView: View {
     }
 
     private func cardGrid(_ count: Int, columns: Int, metrics: Int, items: Int) -> some View {
-        SectionGrid(sections: Array(sections.prefix(count)), columns: columns, hSpacing: 10, vSpacing: 10) { section in
+        TileGrid(items: Array(sections.prefix(count)), columns: columns, hSpacing: 10, vSpacing: 10) { section in
             Button(intent: OpenSectionIntent(section: section.key)) {
                 SectionCard(section: section, accent: accent, maxMetrics: metrics, maxItems: items, opens: true,
                             workspaceId: entry.workspaceId)
@@ -301,6 +317,8 @@ struct DrillView: View {
     private var list: some View {
         if section.failed {
             FailedNote(text: section.note)
+        } else if section.key == "tasks", !section.filters.isEmpty {
+            TaskBoard(section: section, filter: entry.taskFilter, accent: accent, workspaceId: entry.workspaceId)
         } else {
             let metrics = Array(section.metrics.prefix(family == .systemMedium ? 2 : 3))
             if section.items.isEmpty {
@@ -324,6 +342,92 @@ struct DrillView: View {
                     }
                 }
             }
+        }
+    }
+}
+
+/// My tasks zoomed in: the server's day buckets as filters, the chosen bucket's tasks as cards.
+struct TaskBoard: View {
+    @Environment(\.widgetFamily) private var family
+    let section: PulseSection
+    let filter: String?
+    let accent: Color
+    var workspaceId: String? = nil
+
+    private var shown: [PulseItem] {
+        guard let filter else { return section.items }
+        return section.items.filter { $0.bucket == filter }
+    }
+
+    private var total: Int { section.filters.reduce(0) { $0 + $1.count } }
+
+    /// How many tasks the chosen filter holds on the server, not just how many were sent.
+    private var held: Int {
+        guard let filter else { return total }
+        return section.filters.first { $0.key == filter }?.count ?? shown.count
+    }
+
+    private var columns: Int { family == .systemExtraLarge ? 3 : 2 }
+
+    private var capacity: Int {
+        switch family {
+        case .systemMedium: return 2
+        case .systemExtraLarge: return 12
+        default: return 6
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ViewThatFits(in: .horizontal) {
+                chips(section.filters)
+                chips(section.filters.filter { $0.count > 0 || $0.key == filter })
+            }
+            if shown.isEmpty {
+                Label(emptyText, systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
+            } else {
+                FitDown(from: capacity) { n in
+                    VStack(alignment: .leading, spacing: 6) {
+                        TileGrid(items: Array(shown.prefix(n)), columns: columns, hSpacing: 6, vSpacing: 6) {
+                            TaskCard(item: $0, accent: accent, workspaceId: workspaceId)
+                        }
+                        if held > min(n, shown.count) {
+                            Link(destination: HubStore.widgetLink(section.url)) {
+                                HStack(spacing: 4) {
+                                    Text("+\(held - min(n, shown.count)) more")
+                                    Spacer(minLength: 4)
+                                    Text("Open in Hub")
+                                    Image(systemName: "arrow.up.right")
+                                }
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(accent)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func chips(_ filters: [PulseFilter]) -> some View {
+        HStack(spacing: 4) {
+            FilterChip(label: "All", count: total, filter: "all", selected: filter == nil, accent: accent)
+            ForEach(filters) { f in
+                FilterChip(label: f.label, count: f.count, filter: f.key, selected: filter == f.key, accent: accent,
+                           attention: f.key == "overdue" && f.count > 0)
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var emptyText: String {
+        switch filter {
+        case "overdue": return "Nothing overdue."
+        case "today": return "Nothing due today."
+        case "tomorrow": return "Nothing due tomorrow."
+        case "week": return "Nothing else due this week."
+        case "later": return "Nothing due later."
+        default: return "No open tasks."
         }
     }
 }

@@ -11,6 +11,8 @@ struct PulseEntry: TimelineEntry {
     var drill: String? = nil
     /// Overview only: the sections chosen in Edit Widget; empty = all of them.
     var only: [String] = []
+    /// The task board's day bucket; nil = all.
+    var taskFilter: String? = nil
 
     var isStale: Bool { error != nil && pulse != nil }
     var visibleSections: [PulseSection] {
@@ -42,6 +44,7 @@ enum Refresh {
     static func load(_ c: OverviewIntent) async -> PulseEntry {
         var entry = await load(key: c.apiKey, workspace: c.workspace, section: nil, drill: DrillState.current)
         entry.only = (c.sections ?? []).map(\.rawValue)
+        entry.taskFilter = TaskFilterState.current
         return entry
     }
 
