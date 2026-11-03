@@ -2,6 +2,11 @@
 
 Newest first. Each release's GitHub page opens with its entry from this file.
 
+## 1.4.7 — 3 Nov 2026
+
+- **Icons in the macOS style.** Each area's icon is now a frosted glass tile — light, or graphite in
+  dark mode — with its symbol in the area's colour, like the apps in your Dock. Badges are smaller.
+
 ## 1.4.6 — 3 Nov 2026
 
 - **The widget is a home screen.** Every area is an app icon with its name underneath, in its own

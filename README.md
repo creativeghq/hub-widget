@@ -6,7 +6,12 @@ and opens the right page in the web app when you click a figure.
 
 ![Build](https://github.com/creativeghq/hub-widget/actions/workflows/build.yml/badge.svg)
 
-## What's new in 1.4.6
+## What's new in 1.4.7
+
+- **Icons in the macOS style.** Each area's icon is now a frosted glass tile — light, or graphite in
+  dark mode — with its symbol in the area's colour, like the apps in your Dock. Badges are smaller.
+
+In 1.4.6:
 
 - **The widget is a home screen.** Every area is an app icon with its name underneath, in its own
   colour. A red badge shows how many things need you, like on iPhone. Click an icon to go inside and

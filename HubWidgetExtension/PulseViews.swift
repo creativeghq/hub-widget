@@ -47,45 +47,52 @@ extension View {
     func tile(_ accent: Color, attention: Bool = false) -> some View { glass(tint: attention ? accent : nil) }
 }
 
-/// An area as an app icon: its glyph on a glass squircle in the area's colour, with a red count
-/// badge when something needs attention.
+/// An area as a macOS Tahoe app icon: a frosted glass squircle (light, or graphite in dark mode)
+/// with the area's glyph in its own colour, a fine specular rim and a soft neutral shadow. A red
+/// count badge, as in the Dock, when something needs attention.
 struct AppIcon: View {
     @Environment(\.widgetRenderingMode) private var mode
+    @Environment(\.colorScheme) private var scheme
     let key: String
     var size: CGFloat = 44
     var badge: String? = nil
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: size * 0.225, style: .continuous)
         let tint = SectionStyle.tint(key)
         let color = mode == .fullColor
+        let dark = scheme == .dark
+        let big = size > 20
         ZStack {
             if color {
-                shape.fill(tint.gradient)
-                    .overlay(shape.fill(LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.0)],
-                                                       startPoint: .top, endPoint: .center)))
-                    .shadow(color: tint.opacity(0.35), radius: size > 20 ? 3 : 1, y: size > 20 ? 2 : 0.5)
+                shape.fill(LinearGradient(colors: dark ? [Color(white: 0.34), Color(white: 0.20)]
+                                                       : [Color(white: 1.0), Color(white: 0.90)],
+                                          startPoint: .top, endPoint: .bottom))
+                    .overlay(shape.fill(tint.opacity(dark ? 0.10 : 0.05)))
+                    .shadow(color: .black.opacity(dark ? 0.45 : 0.20), radius: big ? 2.5 : 0.8, y: big ? 1.5 : 0.5)
             } else {
-                shape.fill(Color.white.opacity(0.16))
+                shape.fill(Color.white.opacity(0.14))
             }
             Image(systemName: SectionStyle.symbol(key))
-                .font(.system(size: size * 0.46, weight: .semibold))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(color ? 0.18 : 0), radius: 1, y: 0.5)
+                .symbolVariant(.fill)
+                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: size * 0.50, weight: .medium))
+                .foregroundStyle(color ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(Color.white))
                 .widgetAccentable()
         }
-        .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.08)],
-                                                   startPoint: .top, endPoint: .bottom), lineWidth: size > 20 ? 0.8 : 0.5))
+        .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(dark ? 0.30 : 1.0), .white.opacity(dark ? 0.04 : 0.35)],
+                                                   startPoint: .top, endPoint: .bottom), lineWidth: big ? 0.75 : 0.5))
+        .overlay(shape.strokeBorder(Color.black.opacity(color && !dark ? 0.08 : 0), lineWidth: 0.5).padding(-0.5))
         .frame(width: size, height: size)
         .overlay(alignment: .topTrailing) {
             if let badge {
                 Text(badge)
-                    .font(.system(size: max(9, size * 0.24), weight: .bold)).monospacedDigit()
+                    .font(.system(size: max(8.5, size * 0.21), weight: .semibold)).monospacedDigit()
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 4).frame(minWidth: size * 0.38, minHeight: size * 0.38)
-                    .background(Capsule().fill(color ? Color.red : Color.white.opacity(0.3)))
-                    .overlay(Capsule().strokeBorder(.white.opacity(0.5), lineWidth: 0.5))
-                    .offset(x: size * 0.14, y: -size * 0.14)
+                    .padding(.horizontal, 3.5).frame(minWidth: size * 0.34, minHeight: size * 0.34)
+                    .background(Capsule().fill(color ? Color(red: 1.0, green: 0.23, blue: 0.19) : Color.white.opacity(0.3)))
+                    .shadow(color: .black.opacity(0.2), radius: 1, y: 0.5)
+                    .offset(x: size * 0.12, y: -size * 0.12)
             }
         }
     }
@@ -101,7 +108,7 @@ struct AppCell: View {
             VStack(spacing: 4) {
                 AppIcon(key: section.key, size: size, badge: section.badge)
                 Text(section.shortTitle)
-                    .font(.system(size: size < 40 ? 10 : 11, weight: .medium))
+                    .font(.system(size: size < 40 ? 10 : 11))
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .foregroundStyle(.primary)
             }
