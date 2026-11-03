@@ -151,6 +151,11 @@ final class PulseTests: XCTestCase {
         XCTAssertEqual(failed.badge, "!", "a section that could not be read says so, never a blank icon")
     }
 
+    func testAppointmentsIsASection() {
+        XCTAssertEqual(SectionStyle.label("appointments"), "Appointments")
+        XCTAssertEqual(SectionStyle.symbol("appointments"), "calendar")
+    }
+
     func testARefusedWidgetKeyFallsBackToTheAppKey() {
         XCTAssertEqual(PulseClient.candidateKeys(configured: "kai_old", appKey: "kai_new", remembered: "kai_old"),
                        ["kai_old", "kai_new"])

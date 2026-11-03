@@ -4,6 +4,9 @@ Newest first. Each release's GitHub page opens with its entry from this file.
 
 ## 1.4.7 — 3 Nov 2026
 
+- **New: Appointments.** Your appointments as their own app, after Tasks: how many wait for you to
+  confirm (badged), today's and the next 7 days', each with its time and service. Today's also
+  appear in Today.
 - **Icons in the macOS style.** Each area's icon is now a frosted glass tile — light, or graphite in
   dark mode — with its symbol in the area's colour, like the apps in your Dock. Badges are smaller.
 

@@ -8,6 +8,9 @@ and opens the right page in the web app when you click a figure.
 
 ## What's new in 1.4.7
 
+- **New: Appointments.** Your appointments as their own app, after Tasks: how many wait for you to
+  confirm (badged), today's and the next 7 days', each with its time and service. Today's also
+  appear in Today.
 - **Icons in the macOS style.** Each area's icon is now a frosted glass tile — light, or graphite in
   dark mode — with its symbol in the area's colour, like the apps in your Dock. Badges are smaller.
 

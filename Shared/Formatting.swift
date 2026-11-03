@@ -84,6 +84,7 @@ enum SectionStyle {
         switch key {
         case "today": return "sun.max"
         case "analytics": return "chart.bar.xaxis"
+        case "appointments": return "calendar"
         case "tasks": return "checklist"
         case "projects": return "folder"
         case "finance": return "eurosign.circle"
@@ -120,6 +121,7 @@ enum SectionStyle {
         case "realestate": return "Real estate"
         case "deals": return "Deals"
         case "analytics": return "Analytics"
+        case "appointments": return "Appointments"
         case "jobs": return "Jobs"
         case "marketing": return "Marketing"
         case "agent": return "Assistant"
@@ -135,17 +137,18 @@ enum SectionStyle {
     static func tint(_ key: String?) -> Color {
         switch key {
         case "today": return .orange
-        case "tasks": return .red
+        case "tasks": return .blue
+        case "appointments": return .red
         case "projects": return .indigo
         case "finance": return .green
-        case "quotes": return .cyan
+        case "quotes": return Color(red: 0.80, green: 0.56, blue: 0.0)
         case "crm": return .teal
         case "analytics": return .purple
         case "deals": return .mint
         case "realestate": return .brown
         case "warehouse": return Color(red: 0.42, green: 0.48, blue: 0.56)
         case "hr": return .pink
-        case "inbox": return .blue
+        case "inbox": return .cyan
         case "jobs": return .mint
         case "marketing": return .red
         case "agent": return .cyan

@@ -17,6 +17,12 @@ enum SamplePulse {
         {"key":"overdue","label":"Overdue","value":2,"kind":"count","tone":"attention"},
         {"key":"due_soon","label":"Due in 7 days","value":5,"kind":"count","tone":"neutral"},
         {"key":"open","label":"Open","value":14,"kind":"count","tone":"neutral"}]},
+      {"key":"appointments","title":"Appointments","status":"ok","url":"/agent-hub?capability=appointments","metrics":[
+        {"key":"to_confirm","label":"To confirm","value":1,"kind":"count","tone":"attention"},
+        {"key":"today","label":"Today","value":2,"kind":"count","tone":"neutral"},
+        {"key":"next_7d","label":"Next 7 days","value":5,"kind":"count","tone":"neutral"}],
+       "items":[{"title":"Eleni Kosta","subtitle":"10:30 · Site visit","status":"pending","date":"2026-11-02","tone":"attention"},
+                {"title":"Petros Ioannou","subtitle":"16:00 · Showroom","status":"confirmed","date":"2026-11-02"}]},
       {"key":"projects","title":"Projects","status":"ok","url":"/projects","metrics":[
         {"key":"active","label":"Active","value":6,"kind":"count","tone":"neutral"},
         {"key":"total","label":"All projects","value":21,"kind":"count","tone":"neutral"}],
