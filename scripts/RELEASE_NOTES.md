@@ -22,5 +22,4 @@ Requires macOS 14 Sonoma or later. Runs on Apple silicon and Intel. Full guide i
 
 ## What's new
 
-- **My tasks and Leads on top.** The large Hub overview opens with your tasks and your newest leads as lists side by side. Tick a task's circle to complete it. Every other section sits under them as tiles in two columns.
-- **Task board with day filters.** Tap My tasks to see them as cards, filtered by **All · Overdue · Today · Tomorrow · This week · Later**, each with its count.
+- **Every notification shows which area it is about.** In the menu-bar panel, each notification has a tinted icon in front of it: Finance, Inbox, CRM, Jobs, Marketing, Projects and so on. Mac banners show the area's name under the title, and Notification Center groups them by area.
