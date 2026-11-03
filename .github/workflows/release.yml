@@ -91,9 +91,13 @@ jobs:
         run: |
           V=${{ steps.v.outputs.version }}
           TAG="v$V"
-          NOTES=$(cat scripts/RELEASE_NOTES.md)
+          # What's new first (this version's CHANGELOG.md entry), then the install steps.
+          NEWS=$(awk -v v="## $V " 'index($0, v) == 1 {on = 1; next} on && /^## / {exit} on' CHANGELOG.md)
+          test -n "$(echo "$NEWS" | tr -d '[:space:]')" || { echo "CHANGELOG.md has no '## $V' entry"; exit 1; }
+          NOTES=$(printf "## What's new in %s\n%s\n\n---\n\n%s\n" "$V" "$NEWS" "$(cat scripts/RELEASE_NOTES.md)")
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/* --clobber
+            gh release edit "$TAG" --notes "$NOTES"
           else
             gh release create "$TAG" dist/* --title "Hub Widget $V" --notes "$NOTES" --target "$GITHUB_SHA"
           fi

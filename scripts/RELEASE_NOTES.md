@@ -1,4 +1,4 @@
-## Download
+## Install
 
 **HubWidget-*.dmg** — open it, drag Hub Widget to Applications. (`.zip` holds the same app.)
 
@@ -19,7 +19,3 @@ xattr -dr com.apple.quarantine "/Applications/Hub Widget.app"
 3. Right-click the desktop → **Edit Widgets…** → search **Hub** → add *Hub overview* or *Hub section*.
 
 Requires macOS 14 Sonoma or later. Runs on Apple silicon and Intel. Full guide in the [README](https://github.com/creativeghq/hub-widget#readme).
-
-## What's new
-
-- **Every notification shows which area it is about.** In the menu-bar panel, each notification has a tinted icon in front of it: Finance, Inbox, CRM, Jobs, Marketing, Projects and so on. Mac banners show the area's name under the title, and Notification Center groups them by area.

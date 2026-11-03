@@ -6,19 +6,32 @@ and opens the right page in the web app when you click a figure.
 
 ![Build](https://github.com/creativeghq/hub-widget/actions/workflows/build.yml/badge.svg)
 
+## What's new in 1.4.5
+
+- **Every notification shows which area it is about.** In the menu-bar panel each notification has a
+  coloured icon in front of it: Finance, Inbox, CRM, Jobs, Marketing, Projects and so on.
+- **Mac banners name the area** under the title, and Notification Center groups them by area.
+
+Earlier versions: [CHANGELOG.md](CHANGELOG.md) · [Download the latest](https://github.com/creativeghq/hub-widget/releases/latest)
+
 ```
-┌─ Hub overview (large) ──────────────────────────────┐
-│ Hub                               4 need attention  │
-│ ✓ My tasks     ● 2 Overdue   5 Due in 7 days  14 Open│
-│ ▤ Projects       6 Active   21 All projects          │
-│ € Finance      €48K Owed to you  ● 3 Overdue invoices│
-│ ↗ Deals          9 Open deals  €126K Weighted        │
-│ ⌂ Real estate   17 Active listings  4 Viewings       │
-│ ▣ Warehouse      0 Below reorder  8 Lines to receive │
-│ ✉ Inbox        ● 3 Open conversations                │
-│ Your workspace                     Updated 2 min ago │
-└──────────────────────────────────────────────────────┘
+┌─ Hub overview (large) ─────────────────────────────────┐
+│ Hub                         + Lead   4 need attention  │
+│ ┌ ✓ My tasks       2 › ┐  ┌ 👥 Leads          3 › ┐    │
+│ │ ○ Measure kitchen    │  │ ▍Maria Papadopoulou  │    │
+│ │   Overdue · 30 Oct   │  │   Bathroom renovation│    │
+│ │ ○ Order worktop      │  │ ▍Nikos Georgiou      │    │
+│ │   Today              │  │   Kitchen quote      │    │
+│ └──────────────────────┘  └──────────────────────┘    │
+│ ┌ ☀ Today          2 › ┐  ┌ € Finance          › ┐    │
+│ ┌ ▤ Projects       6 › ┐  ┌ ⌂ Real estate      › ┐    │
+│ ┌ ↗ Deals          9 › ┐  ┌ ✉ Inbox          3 › ┐    │
+│ Your workspace                      Updated 2 min ago  │
+└────────────────────────────────────────────────────────┘
 ```
+
+Tap **My tasks** for the task board — **All · Overdue · Today · Tomorrow · This week · Later**,
+tasks as cards you can tick off.
 
 ## What you get
 
@@ -274,15 +287,17 @@ is an app change and ships through auto-update.
 | "Hub Widget can't be opened" / "Apple could not verify…" | First launch of an ad-hoc build — see Install step 2. |
 | A section says *Unknown* | The platform could not read that section; the note says why. Other sections are unaffected. |
 | ⚠ next to "Last good …" | The latest refresh failed (offline, VPN, platform down). Figures are from the time shown. |
+| A blank square instead of the app icon on Mac banners | macOS cached the icon before it existed. In Terminal: `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "/Applications/Hub Widget.app" && killall NotificationCenter` — the next banner shows the MH icon. |
 | Clicking a figure does nothing | Hub Widget.app must be in `/Applications`; open it once so macOS registers its `hubwidget://` links. |
 | Widget missing from the gallery | Open the app once after installing, then log out/in if macOS still has not picked it up. |
 | A section you expect is missing | Check the key in the Hub Widget window: the preview lists hidden sections with the reason (module not in the workspace, or your role cannot see it). |
 
 ## Security
 
-- The key lives in the widget's own configuration (set in *Edit Widget*, kept by macOS for that
-  widget) and in the widget extension's sandboxed preferences so other Hub widgets can reuse it.
-  It is sent only to the platform API over HTTPS. The Hub Widget window does not store it.
+- The key is saved by the app (Settings…) in its sandboxed preferences and in
+  `~/Library/Application Support/HubWidget/key` (owner-only), which is how the widgets read it. A key
+  typed into a widget's *Edit Widget* is kept by macOS for that widget. It is sent only to the
+  platform API over HTTPS.
 - Both the app and the widget are sandboxed with outgoing network access only.
 - The endpoint is read-only and runs as the key's owner, so database row security applies exactly
   as in the web app. A key bound to a workspace cannot read any other.
@@ -292,9 +307,15 @@ is an app change and ships through auto-update.
 
 ## Releasing a new version
 
-Push a tag — `git tag v1.0.1 && git push origin v1.0.1` — or run **Actions → Release → Run
-workflow** with a version. The workflow tests, builds a universal (Apple silicon + Intel) app,
-packages `HubWidget-<version>.dmg` and `.zip` with checksums, and publishes the GitHub Release.
+1. Add a `## <version> — <date>` entry at the top of [CHANGELOG.md](CHANGELOG.md), in plain words
+   for the people using the widget, and copy it into *What's new* at the top of this README.
+2. Push a tag — `git tag v1.4.6 && git push origin v1.4.6` — or run **Actions → Release → Run
+   workflow** with a version.
+
+The workflow builds a universal (Apple silicon + Intel) app, packages `HubWidget-<version>.dmg` and
+`.zip` with checksums, and publishes the GitHub Release. The release page opens with the version's
+CHANGELOG entry, then the install steps (`scripts/RELEASE_NOTES.md`); a tag with no CHANGELOG entry
+fails the release rather than publishing one without notes.
 
 ## License
 
