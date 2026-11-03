@@ -62,6 +62,22 @@ struct PulseSection: Codable, Equatable, Identifiable {
     var failed: Bool { status != "ok" }
     var attentionCount: Int { metrics.filter(\.needsAttention).count }
 
+    /// The app icon's badge: the first figure needing attention, `!` when the section could not be read.
+    var badge: String? {
+        if failed { return "!" }
+        guard let m = metrics.first(where: \.needsAttention), m.value > 0 else { return nil }
+        return m.value >= 100 ? "99+" : m.value.formatted(.number.precision(.fractionLength(0)))
+    }
+
+    /// The name under the app icon.
+    var shortTitle: String {
+        switch key {
+        case "tasks": return "Tasks"
+        case "crm": return "Leads"
+        default: return title
+        }
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         key = try c.decode(String.self, forKey: .key)

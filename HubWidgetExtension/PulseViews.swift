@@ -522,22 +522,6 @@ struct MessageView: View {
 extension PulseSection {
     /// The metric a one-line summary should lead with: the first that needs attention, else the first.
     var headline: PulseMetric? { metrics.first { $0.needsAttention } ?? metrics.first }
-
-    /// The app icon's badge: the first figure needing attention, `!` when the section could not be read.
-    var badge: String? {
-        if failed { return "!" }
-        guard let m = metrics.first(where: \.needsAttention), m.value > 0 else { return nil }
-        return m.value >= 100 ? "99+" : m.value.formatted(.number.precision(.fractionLength(0)))
-    }
-
-    /// The name under the app icon.
-    var shortTitle: String {
-        switch key {
-        case "tasks": return "Tasks"
-        case "crm": return "Leads"
-        default: return title
-        }
-    }
 }
 
 /// Sales per day as bars in the area's colour, money on the trailing axis.
