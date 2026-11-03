@@ -1,8 +1,8 @@
 import Foundation
 
 /// Addresses, the remembered key and the last good pulse.
-/// An ad-hoc signed build has no App Group, so the app and the widget extension each keep their own
-/// copy in their own sandbox: the widget's key comes from its "Edit Widget" panel, not from the app.
+/// An ad-hoc signed build has no App Group, so each target has its own defaults; the app's key reaches
+/// the widget through `appKeyFile`, a path both sandboxes are granted by a temporary exception.
 enum HubStore {
     static let apiBase = "https://bgbavxtjlbvgplozizxu.supabase.co/functions/v1"
     static let appBase = "https://app.materialshub.gr"
@@ -13,6 +13,24 @@ enum HubStore {
     static var rememberedKey: String? {
         get { nonEmpty(defaults.string(forKey: "rememberedKey")) }
         set { defaults.set(newValue, forKey: "rememberedKey") }
+    }
+
+    /// The key saved in the app's Settings: what every widget uses unless its own key is accepted.
+    static var appKey: String? {
+        nonEmpty(try? String(contentsOf: appKeyFile, encoding: .utf8))
+    }
+
+    static func publishAppKey(_ key: String?) {
+        let fm = FileManager.default
+        guard let key else { try? fm.removeItem(at: appKeyFile); return }
+        try? fm.createDirectory(at: appKeyFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        fm.createFile(atPath: appKeyFile.path, contents: Data(key.utf8), attributes: [.posixPermissions: 0o600])
+    }
+
+    /// In the real home, not the sandbox container — must match the home-relative paths in project.yml.
+    static var appKeyFile: URL {
+        let home = getpwuid(getuid()).flatMap { String(validatingUTF8: $0.pointee.pw_dir) } ?? NSHomeDirectory()
+        return URL(fileURLWithPath: home).appendingPathComponent("Library/Application Support/HubWidget/key")
     }
 
     static func cachedPulse(key: String, workspaceId: String?) -> Pulse? {

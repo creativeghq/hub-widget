@@ -66,7 +66,7 @@ struct CompleteTaskIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        guard let key = HubStore.rememberedKey else { throw PulseError.noKey }
+        guard let key = HubStore.rememberedKey ?? HubStore.appKey else { throw PulseError.noKey }
         try await PulseClient(apiKey: key, workspaceId: workspaceId).completeTask(taskId)
         HubStore.expireFreshPulses()
         return .result()

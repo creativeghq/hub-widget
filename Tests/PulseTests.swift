@@ -102,6 +102,13 @@ final class PulseTests: XCTestCase {
         XCTAssertEqual(item.value, 1200.5)
     }
 
+    func testARefusedWidgetKeyFallsBackToTheAppKey() {
+        XCTAssertEqual(PulseClient.candidateKeys(configured: "kai_old", appKey: "kai_new", remembered: "kai_old"),
+                       ["kai_old", "kai_new"])
+        XCTAssertEqual(PulseClient.candidateKeys(configured: " ", appKey: "kai_new", remembered: nil), ["kai_new"])
+        XCTAssertEqual(PulseClient.candidateKeys(configured: nil, appKey: nil, remembered: nil), [])
+    }
+
     func testOnlyATaskWithAnIdCanBeCompleted() throws {
         let task = try JSONDecoder().decode(PulseItem.self, from: Data(#"{"title":"Fit doors","id":"62783b51-6dd3-4864-8cbe-ef9f032b04de","action":"complete_task"}"#.utf8))
         XCTAssertTrue(task.canComplete)

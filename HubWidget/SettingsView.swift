@@ -9,7 +9,7 @@ final class SetupModel: ObservableObject {
     @Published var status: String?
     @Published var busy = false
 
-    /// Checks the key and keeps it for Mac notifications. The widget keeps its own copy (Edit Widget).
+    /// Checks the key and keeps it for Mac notifications and for every widget.
     func save(delegate: AppDelegate) async {
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard key.hasPrefix("kai_") else {
@@ -21,6 +21,7 @@ final class SetupModel: ObservableObject {
         do {
             pulse = try await PulseClient(apiKey: key).fetch()
             HubStore.rememberedKey = key
+            HubStore.publishAppKey(key)
             let allowed = await delegate.requestNotificationPermission()
             if !delegate.opensAtLogin { delegate.opensAtLogin = true }
             status = allowed
@@ -36,10 +37,11 @@ final class SetupModel: ObservableObject {
 
     func forget() {
         HubStore.rememberedKey = nil
+        HubStore.publishAppKey(nil)
         HubStore.notificationCursor = nil
         apiKey = ""
         pulse = nil
-        status = "Key removed from this app. Widgets keep the key set in Edit Widget."
+        status = "Key removed. Widgets keep only a key set in their own Edit Widget."
     }
 }
 

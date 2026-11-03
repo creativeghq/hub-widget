@@ -37,6 +37,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
         setUpStatusItem()
+        if let key = HubStore.rememberedKey, HubStore.appKey != key {
+            HubStore.publishAppKey(key)
+            WidgetCenter.shared.reloadAllTimelines()
+        }
         if HubStore.rememberedKey == nil { showSetup() }
         startPolling()
     }

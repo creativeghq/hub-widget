@@ -119,16 +119,17 @@ Paste the key into the Hub Widget window → **Connect**. That turns on Mac noti
 when macOS asks), sets Hub Widget to open at login, and shows a preview of what the widget will
 display. Later, open the window from the menu-bar icon → **Settings…**.
 
-### 4. Add the widget and paste the key
+### 4. Add the widget
 
 1. Right-click the desktop → **Edit Widgets…** (or Notification Centre → *Edit Widgets*).
 2. Search **Hub**, drag *Hub overview* or *Hub section* onto the desktop.
-3. Right-click the widget → **Edit "Hub overview"** → paste the key into **API key**.
-   *Workspace* is optional (empty = the key's workspace). For *Hub section*, pick the **Section**.
+3. Optional: right-click the widget → **Edit "Hub overview"** to pick a *Workspace* or, for
+   *Hub section*, the **Section**.
 
-You paste the key into a widget once: every further Hub widget reuses it. (The app and the widget
-each keep their own copy — macOS only lets them share storage when the app is signed with a paid
-Apple Developer account — so the key is pasted twice in total, never again, including after updates.)
+The widget uses the key saved in the app's **Settings…** — there is no App Group without a paid
+Apple Developer account, so the app writes it to `~/Library/Application Support/HubWidget/key`,
+which both sandboxes may reach by a temporary exception. The **API key** field in Edit Widget is
+optional; a key there is tried first, and if it is refused the widget falls back to the app's key.
 
 Keep **Hub Widget.app** in `/Applications` — clicking a figure in the widget opens the page in
 your browser through it. It does not need to stay open.
@@ -267,8 +268,8 @@ is an app change and ships through auto-update.
 |---|---|
 | No Mac notifications | Menu-bar icon → Settings…: the key is connected and *Show Mac notifications* is on; System Settings → Notifications → Hub Widget is allowed; *Open at login* is on (notifications need the app running). |
 | No menu-bar icon | Open Hub Widget from Applications once; it then starts at login. |
-| "Right-click this widget → Edit Widget…" | No key yet: right-click → Edit, paste the key into API key. |
-| "The API key was refused" | The key was revoked or expired — generate a new one in Profile → Keys. |
+| "Open the Hub app → Settings…" | No key yet: paste it in the app's Settings. |
+| "The API key was refused" | The key was revoked or expired — generate a new one in Profile → Keys and save it in the app's Settings. |
 | "Workspace not found for this key" | The key is bound to another workspace, or you left it. Clear *Workspace* in Edit Widget, or use a key bound to the right one. |
 | "Hub Widget can't be opened" / "Apple could not verify…" | First launch of an ad-hoc build — see Install step 2. |
 | A section says *Unknown* | The platform could not read that section; the note says why. Other sections are unaffected. |

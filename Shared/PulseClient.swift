@@ -9,9 +9,9 @@ enum PulseError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .noKey: return "Right-click this widget → Edit Widget, and paste your kai_ API key."
+        case .noKey: return "Open the Hub app → Settings… and paste your kai_ API key."
         case .badURL: return "The API address is not a valid URL."
-        case .http(401, _): return "This widget's API key was refused — it may have been replaced. Right-click the widget → Edit Widget and paste your current kai_ key."
+        case .http(401, _): return "The API key was refused — it may have been replaced. Open the Hub app → Settings… and paste your current kai_ key."
         case .http(404, _): return "That workspace was not found for this key."
         case .http(let code, let msg): return "The platform answered \(code): \(msg)"
         case .transport(let msg): return "Could not reach the platform: \(msg)"
@@ -94,26 +94,39 @@ struct PulseClient {
         return data
     }
 
-    /// Fetch with the widget's key (or the remembered one), cache the result, and fall back to the
-    /// last good pulse — marked by the returned error — when the platform cannot be reached.
+    /// Keys to try in order: the widget's own (Edit Widget), the app's, the last that worked here.
+    static func candidateKeys(configured: String?, appKey: String? = HubStore.appKey,
+                              remembered: String? = HubStore.rememberedKey) -> [String] {
+        var keys: [String] = []
+        for k in [HubStore.nonEmpty(configured), HubStore.nonEmpty(appKey), HubStore.nonEmpty(remembered)] {
+            if let k, !keys.contains(k) { keys.append(k) }
+        }
+        return keys
+    }
+
+    /// Fetch with the first key that is accepted, cache the result, and fall back to the last good
+    /// pulse — marked by the returned error — when the platform cannot be reached.
     static func refresh(key configured: String?, workspaceId: String?, maxAge: TimeInterval = 0) async -> (pulse: Pulse?, error: String?) {
-        guard let key = HubStore.nonEmpty(configured) ?? HubStore.rememberedKey else {
-            return (nil, PulseError.noKey.localizedDescription)
+        let keys = candidateKeys(configured: configured)
+        guard !keys.isEmpty else { return (nil, PulseError.noKey.localizedDescription) }
+        var refused: String?
+        for key in keys {
+            if maxAge > 0, let fresh = HubStore.freshPulse(key: key, workspaceId: workspaceId, maxAge: maxAge) {
+                return (fresh, nil)
+            }
+            do {
+                let pulse = try await PulseClient(apiKey: key, workspaceId: workspaceId).fetch()
+                HubStore.rememberedKey = key
+                HubStore.storeCache(pulse, key: key, workspaceId: workspaceId)
+                return (pulse, nil)
+            } catch PulseError.http(401, let message) {
+                refused = refused ?? message
+            } catch {
+                return (HubStore.cachedPulse(key: key, workspaceId: workspaceId), error.localizedDescription)
+            }
         }
-        if maxAge > 0, let fresh = HubStore.freshPulse(key: key, workspaceId: workspaceId, maxAge: maxAge) {
-            return (fresh, nil)
-        }
-        do {
-            let pulse = try await PulseClient(apiKey: key, workspaceId: workspaceId).fetch()
-            HubStore.rememberedKey = key
-            HubStore.storeCache(pulse, key: key, workspaceId: workspaceId)
-            return (pulse, nil)
-        } catch PulseError.http(401, let message) {
-            // A refused key is not "offline": old figures under it would look current, so show none.
-            return (nil, PulseError.http(401, message).localizedDescription)
-        } catch {
-            return (HubStore.cachedPulse(key: key, workspaceId: workspaceId), error.localizedDescription)
-        }
+        // A refused key is not "offline": old figures under it would look current, so show none.
+        return (nil, PulseError.http(401, refused ?? "").localizedDescription)
     }
 }
 

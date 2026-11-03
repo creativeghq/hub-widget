@@ -83,7 +83,7 @@ struct OverviewIntent: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Hub overview"
     static var description = IntentDescription("Every section you can see on the platform.")
 
-    @Parameter(title: "API key", description: "Your kai_ key from Profile → Keys. Paste it in one Hub widget; the others reuse it.")
+    @Parameter(title: "API key", description: "Optional. Leave empty to use the key saved in the Hub app Settings.")
     var apiKey: String?
 
     @Parameter(title: "Workspace", description: "Leave empty to use the key's workspace.")
@@ -100,7 +100,7 @@ struct SectionIntent: WidgetConfigurationIntent {
     @Parameter(title: "Section", default: .finance)
     var section: SectionKind
 
-    @Parameter(title: "API key", description: "Your kai_ key from Profile → Keys. Paste it in one Hub widget; the others reuse it.")
+    @Parameter(title: "API key", description: "Optional. Leave empty to use the key saved in the Hub app Settings.")
     var apiKey: String?
 
     @Parameter(title: "Workspace", description: "Leave empty to use the key's workspace.")
@@ -124,7 +124,7 @@ struct WorkspaceQuery: EntityQuery {
     }
 
     func suggestedEntities() async throws -> [WorkspaceEntity] {
-        guard let key = HubStore.rememberedKey else { return [] }
+        guard let key = HubStore.rememberedKey ?? HubStore.appKey else { return [] }
         let pulse = try await PulseClient(apiKey: key).fetch()
         return pulse.workspaces.map { WorkspaceEntity(id: $0.id, name: $0.name) }
     }
