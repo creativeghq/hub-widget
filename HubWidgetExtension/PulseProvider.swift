@@ -11,7 +11,6 @@ struct PulseEntry: TimelineEntry {
     var drill: String? = nil
     /// Overview only: the sections chosen in Edit Widget; empty = all of them.
     var only: [String] = []
-    var quickAdd = true
 
     var isStale: Bool { error != nil && pulse != nil }
     var visibleSections: [PulseSection] {
@@ -20,7 +19,7 @@ struct PulseEntry: TimelineEntry {
     }
     var workspaceId: String? { pulse?.workspace?.id }
     /// Adding a lead is offered only to a login that can see CRM.
-    var canAddLead: Bool { quickAdd && pulse?.section("crm") != nil }
+    var canAddLead: Bool { pulse?.section("crm") != nil }
     var layout: WidgetLayout { pulse?.layout ?? WidgetLayout() }
 
     static func sample(_ section: SectionKind? = nil) -> PulseEntry {
@@ -43,7 +42,6 @@ enum Refresh {
     static func load(_ c: OverviewIntent) async -> PulseEntry {
         var entry = await load(key: c.apiKey, workspace: c.workspace, section: nil, drill: DrillState.current)
         entry.only = (c.sections ?? []).map(\.rawValue)
-        entry.quickAdd = c.quickAdd
         return entry
     }
 
@@ -93,9 +91,6 @@ struct OverviewIntent: WidgetConfigurationIntent {
 
     @Parameter(title: "Sections", description: "Pick the sections to show. Leave empty to show every section you can see.")
     var sections: [SectionKind]?
-
-    @Parameter(title: "Show + Lead button", default: true)
-    var quickAdd: Bool
 }
 
 struct SectionIntent: WidgetConfigurationIntent {

@@ -41,6 +41,11 @@ struct QuickLeadView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Button { delegate.panelMode = .home } label: { Image(systemName: "chevron.left") }.buttonStyle(.plain)
+                Text("New lead").font(.headline)
+            }
+            .padding([.horizontal, .top], 14)
             Form {
                 Section {
                     TextField("Name", text: $model.draft.name, prompt: Text("Required"))
@@ -70,7 +75,7 @@ struct QuickLeadView: View {
                     .padding(.horizontal, 20)
             }
 
-            HStack {
+            HStack(spacing: 8) {
                 Button("Open Leads") { NSWorkspace.shared.open(HubStore.appURL("/crm?tab=leads")!) }
                 Spacer()
                 if model.busy { ProgressView().controlSize(.small) }
@@ -80,9 +85,8 @@ struct QuickLeadView: View {
                     .keyboardShortcut(.defaultAction)
                     .disabled(model.busy || !model.draft.isValid)
             }
-            .padding(16)
+            .padding(14)
         }
-        .frame(width: 440)
         .onAppear { nameFocused = true }
     }
 }

@@ -22,9 +22,6 @@ Requires macOS 14 Sonoma or later. Runs on Apple silicon and Intel. Full guide i
 
 ## What's new
 
-- **+ Lead** — on the overview, the CRM widget and inside CRM: opens a small form (name, phone, email, what they want, follow-up date, value) and saves the lead straight to the platform. Also in the menu bar: **New lead…** (⌘L while the menu is open).
-- **Tick off tasks** — every task row has a circle; click it and the task is marked done on the platform.
-- **Today** — a new first tile: everything dated today plus anything late, across tasks, projects, invoices, leads, deals, viewings and time off.
-- **Every section fits** — the large overview shrinks its tiles before it drops a section, so Real estate, Warehouse and HR no longer fall off the end.
-- **Choose your sections** — right-click the widget → Edit Widget → *Sections*. Leave it empty to show everything you can see.
-- Real estate now lists new enquiries before upcoming viewings.
+- **+ Lead always shows** on the overview, the CRM widget and inside CRM whenever your role can see CRM (1.4.0 could hide it on widgets set up before the update).
+- **No more windows:** + Lead now opens a panel that drops down from the Hub icon in the menu bar and closes when you click away. Clicking the Hub icon shows the same panel with your recent notifications, New lead, Open platform, Settings and Updates.
+- From 1.4.0: tick off tasks in the widget, the Today tile, every section fits, and a Sections picker in Edit Widget.

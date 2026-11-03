@@ -9,31 +9,34 @@ import Sparkle
 struct HubWidgetApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
+    // The menu-bar icon and its panel are AppKit (AppDelegate): a MenuBarExtra cannot be opened from code,
+    // and the widget's "+ Lead" has to open the panel at the lead form.
     var body: some Scene {
-        MenuBarExtra {
-            MenuContent(delegate: delegate)
-        } label: {
-            Image(systemName: delegate.unread > 0 ? "square.grid.2x2.fill" : "square.grid.2x2")
-        }
+        Settings { EmptyView() }
     }
 }
+
+enum PanelMode { case home, newLead }
 
 /// Lives in the menu bar: shows platform notifications as native macOS banners, opens links the
 /// widget hands it, keeps itself up to date, and hosts the setup window.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUserNotificationCenterDelegate {
-    @Published var unread = 0
+    @Published var unread = 0 { didSet { updateIcon() } }
+    @Published var panelMode = PanelMode.home
     @Published var recent: [PlatformNotification] = []
     @Published var lastError: String?
 
     let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     private var window: NSWindow?
-    private var leadWindow: NSWindow?
+    private var statusItem: NSStatusItem?
+    private let popover = NSPopover()
     private var timer: Timer?
     static let pollInterval: TimeInterval = 60
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
+        setUpStatusItem()
         if HubStore.rememberedKey == nil { showSetup() }
         startPolling()
     }
@@ -49,21 +52,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         }
     }
 
-    /// The quick-add form the widget's "+ Lead" opens.
-    func showQuickLead() {
-        if leadWindow == nil {
-            let w = NSWindow(contentViewController: NSHostingController(
-                rootView: QuickLeadView(delegate: self) { [weak self] in self?.leadWindow?.close() }))
-            w.title = "New lead"
-            w.styleMask = [.titled, .closable]
-            w.isReleasedWhenClosed = false
-            w.level = .floating
-            w.center()
-            leadWindow = w
-        }
-        NSApp.activate(ignoringOtherApps: true)
-        leadWindow?.makeKeyAndOrderFront(nil)
+    // MARK: Menu-bar panel
+
+    private func setUpStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        item.button?.target = self
+        item.button?.action = #selector(togglePanel)
+        statusItem = item
+        updateIcon()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentViewController = NSHostingController(rootView: PanelView(delegate: self))
     }
+
+    private func updateIcon() {
+        let name = unread > 0 ? "square.grid.2x2.fill" : "square.grid.2x2"
+        statusItem?.button?.image = NSImage(systemSymbolName: name, accessibilityDescription: "Hub")
+    }
+
+    @objc private func togglePanel() {
+        if popover.isShown { closePanel() } else { openPanel(.home) }
+    }
+
+    func openPanel(_ mode: PanelMode) {
+        panelMode = mode
+        guard let button = statusItem?.button else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        if !popover.isShown { popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY) }
+        popover.contentViewController?.view.window?.makeKey()
+    }
+
+    func closePanel() {
+        popover.performClose(nil)
+        panelMode = .home
+    }
+
+    /// The widget's "+ Lead": the panel drops down from the menu bar at the lead form.
+    func showQuickLead() { openPanel(.newLead) }
 
     /// A local confirmation banner; clicking it opens `path` on the platform.
     func confirm(title: String, body: String, path: String) async {
@@ -157,29 +182,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
     }
 }
 
-struct MenuContent: View {
+/// What drops down from the Hub icon: recent notifications and actions, or the new-lead form.
+struct PanelView: View {
     @ObservedObject var delegate: AppDelegate
 
     var body: some View {
-        if delegate.recent.isEmpty {
-            Text("No new notifications")
-        } else {
-            ForEach(delegate.recent) { n in
-                Button(n.title ?? "Notification") {
-                    if let url = DeepLink.webURL(n.actionUrl) { NSWorkspace.shared.open(url) }
-                }
+        Group {
+            switch delegate.panelMode {
+            case .home: home
+            case .newLead: QuickLeadView(delegate: delegate) { delegate.closePanel() }
             }
-            Button("Clear") { delegate.recent = []; delegate.unread = 0 }
         }
-        if let error = delegate.lastError { Text(error).font(.caption) }
-        Divider()
-        Button("New lead…") { delegate.showQuickLead() }
-            .keyboardShortcut("l")
-        Button("Open platform") { NSWorkspace.shared.open(URL(string: HubStore.appBase)!) }
-        Button("Settings…") { delegate.showSetup() }
-        Button("Check for updates…") { delegate.updater.checkForUpdates(nil) }
-        Divider()
-        Button("Quit Hub Widget") { NSApp.terminate(nil) }
+        .frame(width: 340)
+    }
+
+    private var home: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Hub").font(.headline)
+                Spacer()
+                Button { delegate.openPanel(.newLead) } label: { Label("New lead", systemImage: "plus") }
+                    .keyboardShortcut("l")
+            }
+            .padding(12)
+            Divider()
+            if delegate.recent.isEmpty {
+                Text("No new notifications").font(.callout).foregroundStyle(.secondary).padding(12)
+            } else {
+                ForEach(delegate.recent) { n in
+                    Button {
+                        if let url = DeepLink.webURL(n.actionUrl) { NSWorkspace.shared.open(url) }
+                        delegate.closePanel()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(n.title ?? "Notification").font(.callout.weight(.medium)).lineLimit(1)
+                            if let body = n.body { Text(body).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button("Clear") { delegate.recent = []; delegate.unread = 0 }
+                    .buttonStyle(.link).padding(.horizontal, 12).padding(.bottom, 6)
+            }
+            if let error = delegate.lastError {
+                Text(error).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12).padding(.bottom, 6)
+            }
+            Divider()
+            HStack(spacing: 14) {
+                Button("Open platform") { NSWorkspace.shared.open(URL(string: HubStore.appBase)!); delegate.closePanel() }
+                Button("Settings…") { delegate.closePanel(); delegate.showSetup() }
+                Button("Updates…") { delegate.closePanel(); delegate.updater.checkForUpdates(nil) }
+                Spacer()
+                Button("Quit") { NSApp.terminate(nil) }
+            }
+            .buttonStyle(.link)
+            .font(.caption)
+            .padding(12)
+        }
     }
 }
 
