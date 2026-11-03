@@ -3,6 +3,9 @@ import SwiftUI
 
 enum Fmt {
     static func value(_ m: PulseMetric, compact: Bool = true) -> String {
+        if m.isPercent {
+            return (m.value > 0 ? "+" : "") + m.value.formatted(.number.precision(.fractionLength(0...1))) + "%"
+        }
         if m.isMoney {
             let code = m.currency ?? "EUR"
             guard compact && abs(m.value) >= 10_000 else {
@@ -80,6 +83,7 @@ enum SectionStyle {
     static func symbol(_ key: String) -> String {
         switch key {
         case "today": return "sun.max"
+        case "analytics": return "chart.bar.xaxis"
         case "tasks": return "checklist"
         case "projects": return "folder"
         case "finance": return "eurosign.circle"
@@ -115,6 +119,7 @@ enum SectionStyle {
         case "hr": return "HR"
         case "realestate": return "Real estate"
         case "deals": return "Deals"
+        case "analytics": return "Analytics"
         case "jobs": return "Jobs"
         case "marketing": return "Marketing"
         case "agent": return "Assistant"
@@ -126,17 +131,21 @@ enum SectionStyle {
         }
     }
 
-    /// A notification category's own colour, so the list can be scanned by area.
+    /// An area's own colour: its app icon on the widget and its notifications' badge.
     static func tint(_ key: String?) -> Color {
         switch key {
-        case "inbox": return .blue
-        case "crm", "deals": return .teal
+        case "today": return .orange
+        case "tasks": return .red
+        case "projects": return .indigo
         case "finance": return .green
-        case "quotes": return .indigo
-        case "projects", "tasks": return .orange
-        case "warehouse": return .brown
+        case "quotes": return .cyan
+        case "crm": return .teal
+        case "analytics": return .purple
+        case "deals": return .mint
+        case "realestate": return .brown
+        case "warehouse": return Color(red: 0.42, green: 0.48, blue: 0.56)
         case "hr": return .pink
-        case "realestate": return .purple
+        case "inbox": return .blue
         case "jobs": return .mint
         case "marketing": return .red
         case "agent": return .cyan

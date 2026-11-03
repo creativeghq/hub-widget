@@ -75,7 +75,8 @@ final class PulseTests: XCTestCase {
 
     func testMissingLayoutFallsBackToDefaults() throws {
         let pulse = try fixture()
-        XCTAssertEqual(pulse.layout.overview.medium.maxSections, 6)
+        XCTAssertEqual(pulse.layout.overview.medium.maxSections, 12)
+        XCTAssertEqual(pulse.layout.overview.large.style, "home")
         XCTAssertNil(pulse.layout.banner)
     }
 
@@ -91,7 +92,8 @@ final class PulseTests: XCTestCase {
         XCTAssertEqual(pulse.orderedSections.map(\.key), ["warehouse", "projects", "finance"])
         XCTAssertEqual(pulse.layout.banner?.text, "Month end")
         XCTAssertEqual(pulse.layout.overview.large.maxSections, 12, "unspecified sizes keep their defaults")
-        XCTAssertEqual(FitLimits.clamp(pulse.layout.overview.medium.maxSections, 6, max: FitLimits.overviewMedium.sections), 6,
+        XCTAssertEqual(FitLimits.clamp(pulse.layout.overview.medium.maxSections, 6, max: FitLimits.overviewMedium.sections),
+                       FitLimits.overviewMedium.sections,
                        "the server cannot make a widget overflow")
     }
 
@@ -125,6 +127,28 @@ final class PulseTests: XCTestCase {
         XCTAssertEqual(Fmt.due(section.items[1]), "Today")
         let other = try JSONDecoder.pulse.decode(PulseSection.self, from: Data(#"{"key":"crm","filters":null}"#.utf8))
         XCTAssertEqual(other.filters, [], "a section without day buckets decodes with none")
+    }
+
+    func testAnalyticsCarriesItsSeriesAndAPercentChange() throws {
+        let json = #"{"key":"analytics","title":"Analytics","status":"ok","url":"/finance?tab=reports","#
+            + #""metrics":[{"key":"sales_mtd","label":"Sales this month","value":4200,"kind":"money","currency":"EUR","tone":"neutral"},"#
+            + #"{"key":"sales_change","label":"vs same days last month","value":-12.5,"kind":"percent","tone":"neutral"}],"#
+            + #""series":[{"date":"2026-11-02","value":0},{"date":"2026-11-03","value":942.57}]}"#
+        let section = try JSONDecoder.pulse.decode(PulseSection.self, from: Data(json.utf8))
+        XCTAssertEqual(section.series.map(\.value), [0, 942.57])
+        XCTAssertEqual(Fmt.value(section.metrics[1]), "-12.5%")
+        XCTAssertNil(section.badge, "analytics never badges: nothing in it needs acting on")
+        XCTAssertEqual(section.shortTitle, "Analytics")
+        let other = try JSONDecoder.pulse.decode(PulseSection.self, from: Data(#"{"key":"crm","series":null}"#.utf8))
+        XCTAssertEqual(other.series, [])
+        XCTAssertEqual(other.shortTitle, "Leads")
+    }
+
+    func testABadgeIsTheFirstFigureNeedingAttention() throws {
+        let json = #"{"key":"tasks","status":"ok","metrics":[{"key":"overdue","label":"Overdue","value":3,"kind":"count","tone":"attention"}]}"#
+        XCTAssertEqual(try JSONDecoder.pulse.decode(PulseSection.self, from: Data(json.utf8)).badge, "3")
+        let failed = try JSONDecoder.pulse.decode(PulseSection.self, from: Data(#"{"key":"hr","status":"failed"}"#.utf8))
+        XCTAssertEqual(failed.badge, "!", "a section that could not be read says so, never a blank icon")
     }
 
     func testARefusedWidgetKeyFallsBackToTheAppKey() {

@@ -134,7 +134,7 @@ struct WorkspaceQuery: EntityQuery {
 }
 
 enum SectionKind: String, AppEnum {
-    case today, tasks, projects, finance, quotes, crm, deals, realestate, warehouse, hr, inbox
+    case today, tasks, projects, finance, quotes, crm, analytics, deals, realestate, warehouse, hr, inbox
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Section"
     static var caseDisplayRepresentations: [SectionKind: DisplayRepresentation] = [
@@ -144,6 +144,7 @@ enum SectionKind: String, AppEnum {
         .finance: "Finance",
         .quotes: "Quotes",
         .crm: "CRM",
+        .analytics: "Analytics",
         .deals: "Deals",
         .realestate: "Real estate",
         .warehouse: "Warehouse",
@@ -159,6 +160,7 @@ enum SectionKind: String, AppEnum {
         case .finance: return "Finance"
         case .quotes: return "Quotes"
         case .crm: return "CRM"
+        case .analytics: return "Analytics"
         case .deals: return "Deals"
         case .realestate: return "Real estate"
         case .warehouse: return "Warehouse"

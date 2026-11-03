@@ -31,6 +31,18 @@ enum SamplePulse {
         {"key":"new_leads","label":"New leads","value":3,"kind":"count","tone":"attention"}],
        "items":[{"title":"Maria Papadopoulou","subtitle":"Bathroom renovation","date":"2026-11-02","tone":"attention"},
                 {"title":"Nikos Georgiou","subtitle":"Kitchen quote","date":"2026-11-01"}]},
+      {"key":"analytics","title":"Analytics","status":"ok","url":"/finance?tab=reports","metrics":[
+        {"key":"sales_mtd","label":"Sales this month","value":18400,"kind":"money","currency":"EUR","tone":"neutral"},
+        {"key":"sales_change","label":"vs same days last month","value":12.5,"kind":"percent","tone":"neutral"},
+        {"key":"cash_in","label":"Received this month","value":15100,"kind":"money","currency":"EUR","tone":"neutral"},
+        {"key":"cash_out","label":"Paid out this month","value":9700,"kind":"money","currency":"EUR","tone":"neutral"}],
+       "series":[{"date":"2026-10-20","value":900},{"date":"2026-10-21","value":1400},{"date":"2026-10-22","value":0},
+                 {"date":"2026-10-23","value":2100},{"date":"2026-10-24","value":800},{"date":"2026-10-25","value":0},
+                 {"date":"2026-10-26","value":0},{"date":"2026-10-27","value":1700},{"date":"2026-10-28","value":2600},
+                 {"date":"2026-10-29","value":1200},{"date":"2026-10-30","value":3100},{"date":"2026-10-31","value":600},
+                 {"date":"2026-11-01","value":0},{"date":"2026-11-02","value":2300}],
+       "items":[{"title":"Kifisia Homes","subtitle":"3 sales this month","value":7200,"currency":"EUR"},
+                {"title":"Glyfada Villas","subtitle":"2 sales this month","value":5100,"currency":"EUR"}]},
       {"key":"deals","title":"Deals","status":"ok","url":"/crm?tab=pipeline","items":[],"metrics":[
         {"key":"open","label":"Open deals","value":9,"kind":"count","tone":"neutral"},
         {"key":"weighted","label":"Weighted pipeline","value":126000,"kind":"money","currency":"EUR","tone":"neutral"},

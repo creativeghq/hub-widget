@@ -33,60 +33,6 @@ func chunked<T>(_ items: [T], _ columns: Int) -> [[T]] {
     return stride(from: 0, to: items.count, by: c).map { Array(items[$0..<min($0 + c, items.count)]) }
 }
 
-struct SectionTile: View {
-    let section: PulseSection
-    let accent: Color
-    var big = false
-    var secondary = false
-
-    var body: some View {
-        Button(intent: OpenSectionIntent(section: section.key)) {
-            VStack(alignment: .leading, spacing: big ? 3 : 1) {
-                SectionLabel(section: section, accent: accent,
-                             font: big ? .footnote.weight(.semibold) : .caption.weight(.semibold), opens: true)
-                if section.failed {
-                    Text("Unknown").font(.callout.weight(.semibold)).foregroundStyle(.secondary)
-                } else if let m = section.headline {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(Fmt.value(m)).font(big ? .title2.weight(.semibold) : .headline).monospacedDigit()
-                            .lineLimit(1).minimumScaleFactor(0.7)
-                            .foregroundStyle(m.needsAttention ? accent : .primary)
-                        Text(m.label).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    if secondary, let s = section.metrics.first(where: { $0.key != m.key }) {
-                        Text("\(Fmt.value(s)) \(s.label)").font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                }
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, big ? 7 : 5)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .tile(accent, attention: section.attentionCount > 0)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-/// `value label` pairs on one line, e.g. "2 Overdue · 5 Due in 7 days".
-struct InlineMetrics: View {
-    let metrics: [PulseMetric]
-    let accent: Color
-
-    var body: some View {
-        HStack(spacing: 10) {
-            ForEach(metrics) { m in
-                HStack(spacing: 3) {
-                    Text(Fmt.value(m)).font(.callout.weight(.semibold)).monospacedDigit()
-                        .foregroundStyle(m.needsAttention ? accent : .primary)
-                    Text(m.label).font(.caption).foregroundStyle(.secondary)
-                }
-                .lineLimit(1)
-            }
-        }
-    }
-}
-
 struct TileGrid<Item: Identifiable, Cell: View>: View {
     let items: [Item]
     let columns: Int
@@ -110,17 +56,15 @@ struct TileGrid<Item: Identifiable, Cell: View>: View {
 
 // MARK: - Overview widget
 
+/// A home screen of apps: every area the login can see as an icon over its name, in the server's
+/// order. Clicking one zooms the widget into it. Large and extra large keep My tasks and Leads as
+/// lists on top.
 struct OverviewView: View {
     @Environment(\.widgetFamily) private var family
     let entry: PulseEntry
 
     private var accent: Color { SectionStyle.accent(entry.layout) }
-
-    /// Server order, with anything needing attention moved up so it survives when space runs out.
-    private var sections: [PulseSection] {
-        let all = entry.visibleSections
-        return all.filter { $0.attentionCount > 0 } + all.filter { $0.attentionCount == 0 }
-    }
+    private var sections: [PulseSection] { entry.visibleSections }
 
     var body: some View {
         if entry.pulse == nil {
@@ -128,7 +72,7 @@ struct OverviewView: View {
         } else if let key = entry.drill, let section = entry.pulse?.section(key) {
             DrillView(entry: entry, section: section, accent: accent)
         } else {
-            VStack(alignment: .leading, spacing: family == .systemMedium ? 6 : 8) {
+            VStack(alignment: .leading, spacing: family == .systemMedium ? 8 : 10) {
                 header
                 if family != .systemMedium, let banner = entry.layout.banner {
                     BannerLine(banner: banner, accent: accent)
@@ -145,8 +89,7 @@ struct OverviewView: View {
         switch family {
         case .systemMedium: medium
         case .systemExtraLarge: extraLarge
-        default:
-            if entry.layout.overview.large.style == "rows" { largeRows } else { largeTiles }
+        default: large
         }
     }
 
@@ -162,116 +105,74 @@ struct OverviewView: View {
             if n == 0 {
                 Label("All clear", systemImage: "checkmark.circle").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             } else {
-                Text("\(n) need\(n == 1 ? "s" : "") attention")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(accent)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 5))
+                HStack(spacing: 4) {
+                    Circle().fill(.red).frame(width: 6, height: 6)
+                    Text("\(n) need\(n == 1 ? "s" : "") attention")
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
             }
         }
     }
 
+    private func appGrid(_ items: [PulseSection], columns: Int, size: CGFloat, spacing: CGFloat = 8) -> some View {
+        TileGrid(items: items, columns: columns, hSpacing: 4, vSpacing: spacing) { AppCell(section: $0, size: size) }
+    }
+
     private var medium: some View {
         let size = entry.layout.overview.medium
-        let columns = max(1, FitLimits.clamp(size.columns, 3, max: FitLimits.overviewMedium.columns))
-        let top = FitLimits.clamp(size.maxSections, 6, max: FitLimits.overviewMedium.sections)
-        return FitDown(from: top) { n in
-            TileGrid(items: Array(sections.prefix(n)), columns: columns, hSpacing: 6, vSpacing: 6) {
-                SectionTile(section: $0, accent: accent)
-            }
+        let columns = max(4, FitLimits.clamp(size.columns, 6, max: FitLimits.overviewMedium.columns))
+        let apps = Array(sections.prefix(FitLimits.clamp(size.maxSections, 12, max: FitLimits.overviewMedium.sections)))
+        return ViewThatFits(in: .vertical) {
+            appGrid(apps, columns: columns, size: 36, spacing: 6)
+            appGrid(apps, columns: columns, size: 32, spacing: 4)
+            appGrid(Array(apps.prefix(columns * 2)), columns: columns, size: 30, spacing: 2)
+            appGrid(Array(apps.prefix(columns)), columns: columns, size: 30, spacing: 2)
         }
     }
 
     /// Shown as lists across the top of the large overview, in this order.
     static let listKeys = ["tasks", "crm"]
 
-    /// My tasks and leads as lists side by side, every other section as tiles in columns under them.
-    private var largeTiles: some View {
+    private var large: some View {
         let size = entry.layout.overview.large
-        let columns = max(1, FitLimits.clamp(size.columns, 2, max: FitLimits.overviewLarge.columns))
-        let top = FitLimits.clamp(size.maxSections, 8, max: FitLimits.overviewLarge.sections)
-        let secondary = (size.metrics ?? 2) > 1
+        let columns = max(3, FitLimits.clamp(size.columns, 4, max: FitLimits.overviewLarge.columns))
+        let top = FitLimits.clamp(size.maxSections, 12, max: FitLimits.overviewLarge.sections)
         let lists = Self.listKeys.compactMap { key in sections.first { $0.key == key } }
-        let tiles = sections.filter { !Self.listKeys.contains($0.key) }
+        let apps = Array(sections.filter { !Self.listKeys.contains($0.key) }.prefix(top))
         return ViewThatFits(in: .vertical) {
-            largeLayout(lists, rows: 3, tiles, top, columns: columns, big: true, secondary: secondary)
-            largeLayout(lists, rows: 3, tiles, top, columns: columns, big: true, secondary: false)
-            largeLayout(lists, rows: 3, tiles, top, columns: columns, big: false, secondary: false)
-            largeLayout(lists, rows: 2, tiles, top, columns: columns, big: false, secondary: false)
-            largeLayout(lists, rows: 2, tiles, max(2, top - 4), columns: columns, big: false, secondary: false)
-            largeLayout(lists, rows: 2, tiles, 4, columns: columns, big: false, secondary: false)
-            largeLayout(lists, rows: 1, tiles, 2, columns: columns, big: false, secondary: false)
-        }
-    }
-
-    private func largeLayout(_ lists: [PulseSection], rows: Int, _ tiles: [PulseSection], _ count: Int,
-                             columns: Int, big: Bool, secondary: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if !lists.isEmpty {
-                HStack(alignment: .top, spacing: 8) {
-                    ForEach(lists) { ListPanel(section: $0, accent: accent, rows: rows, workspaceId: entry.workspaceId) }
-                }
-            }
-            TileGrid(items: Array(tiles.prefix(count)), columns: columns, hSpacing: big ? 8 : 6, vSpacing: big ? 8 : 6) {
-                SectionTile(section: $0, accent: accent, big: big, secondary: secondary)
-            }
-        }
-    }
-
-    private var largeRows: some View {
-        let size = entry.layout.overview.large
-        let top = FitLimits.clamp(size.maxSections, 6, max: FitLimits.overviewLarge.sections)
-        let metrics = FitLimits.clamp(size.metrics, 3, max: FitLimits.overviewLarge.metrics)
-        return FitDown(from: top) { n in
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(sections.prefix(n)) { section in
-                    Button(intent: OpenSectionIntent(section: section.key)) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            SectionLabel(section: section, accent: accent, opens: true)
-                            if section.failed {
-                                FailedNote(text: section.note)
-                            } else {
-                                InlineMetrics(metrics: Array(section.metrics.prefix(metrics)), accent: accent)
-                            }
-                        }
-                        .padding(.horizontal, 9).padding(.vertical, 6)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .tile(accent, attention: section.attentionCount > 0)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            withLists(lists, rows: 3, apps, columns: columns, size: 46)
+            withLists(lists, rows: 3, apps, columns: 5, size: 42)
+            withLists(lists, rows: 2, apps, columns: 5, size: 40)
+            withLists(lists, rows: 1, apps, columns: 5, size: 36)
+            appGrid(Array(sections.prefix(top)), columns: 5, size: 36, spacing: 6)
         }
     }
 
     private var extraLarge: some View {
         let size = entry.layout.overview.extraLarge
-        let limit = FitLimits.overviewExtraLarge
-        let columns = max(1, FitLimits.clamp(size.columns, 3, max: limit.columns))
-        let metrics = max(1, FitLimits.clamp(size.metrics, 3, max: limit.metrics))
-        let items = FitLimits.clamp(size.items, 0, max: limit.items)
-        let top = FitLimits.clamp(size.maxSections, 12, max: limit.sections)
+        let columns = max(4, FitLimits.clamp(size.columns, 8, max: FitLimits.overviewExtraLarge.columns))
+        let top = FitLimits.clamp(size.maxSections, 16, max: FitLimits.overviewExtraLarge.sections)
+        let keys = Self.listKeys + ["today"]
+        let lists = keys.compactMap { key in sections.first { $0.key == key } }
+        let apps = Array(sections.filter { !keys.contains($0.key) }.prefix(top))
         return ViewThatFits(in: .vertical) {
-            cardGrid(top, columns: columns, metrics: metrics, items: items)
-            cardGrid(top, columns: columns, metrics: metrics, items: 0)
-            cardGrid(top, columns: columns, metrics: max(1, metrics - 1), items: 0)
-            cardGrid(top, columns: columns, metrics: 1, items: 0)
-            cardGrid(min(top, columns * 2), columns: columns, metrics: 1, items: 0)
+            withLists(lists, rows: 4, apps, columns: columns, size: 50)
+            withLists(lists, rows: 3, apps, columns: columns, size: 46)
+            withLists(lists, rows: 2, apps, columns: columns, size: 42)
+            appGrid(Array(sections.prefix(top)), columns: columns, size: 42, spacing: 6)
         }
     }
 
-    private func cardGrid(_ count: Int, columns: Int, metrics: Int, items: Int) -> some View {
-        TileGrid(items: Array(sections.prefix(count)), columns: columns, hSpacing: 10, vSpacing: 10) { section in
-            Button(intent: OpenSectionIntent(section: section.key)) {
-                SectionCard(section: section, accent: accent, maxMetrics: metrics, maxItems: items, opens: true,
-                            workspaceId: entry.workspaceId)
-                    .padding(.horizontal, 10).padding(.vertical, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .tile(accent, attention: section.attentionCount > 0)
-                    .contentShape(Rectangle())
+    private func withLists(_ lists: [PulseSection], rows: Int, _ apps: [PulseSection], columns: Int,
+                           size: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if !lists.isEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    ForEach(lists) { ListPanel(section: $0, accent: accent, rows: rows, workspaceId: entry.workspaceId) }
+                }
             }
-            .buttonStyle(.plain)
+            appGrid(apps, columns: columns, size: size)
         }
     }
 }
@@ -319,6 +220,8 @@ struct DrillView: View {
             FailedNote(text: section.note)
         } else if section.key == "tasks", !section.filters.isEmpty {
             TaskBoard(section: section, filter: entry.taskFilter, accent: accent, workspaceId: entry.workspaceId)
+        } else if section.key == "analytics" {
+            AnalyticsBoard(section: section, accent: accent, workspaceId: entry.workspaceId)
         } else {
             let metrics = Array(section.metrics.prefix(family == .systemMedium ? 2 : 3))
             if section.items.isEmpty {
@@ -339,6 +242,55 @@ struct DrillView: View {
                         StatRow(metrics: metrics, accent: accent)
                         ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url,
                                  workspaceId: entry.workspaceId)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Analytics zoomed in: this month's figures, sales per day for two weeks, and who bought most.
+struct AnalyticsBoard: View {
+    @Environment(\.widgetFamily) private var family
+    let section: PulseSection
+    let accent: Color
+    var workspaceId: String? = nil
+
+    private var currency: String? { section.metrics.first(where: \.isMoney)?.currency }
+
+    private var chartHeight: CGFloat {
+        switch family {
+        case .systemMedium: return 52
+        case .systemExtraLarge: return 120
+        default: return 92
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            StatRow(metrics: Array(section.metrics.prefix(family == .systemMedium ? 3 : 4)), accent: accent)
+            if family != .systemMedium, let note = section.note {
+                Text(note).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+            }
+            if !section.series.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    if family != .systemMedium {
+                        Text("Sales, last 14 days").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    SeriesChart(points: section.series, currency: currency, tint: SectionStyle.tint(section.key))
+                        .frame(height: chartHeight)
+                }
+                .padding(.horizontal, 8).padding(.vertical, 6)
+                .glass()
+            }
+            if family != .systemMedium {
+                Text("Top customers this month").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                if section.items.isEmpty {
+                    Label("No sales this month yet.", systemImage: "chart.bar").font(.caption).foregroundStyle(.secondary)
+                } else {
+                    FitDown(from: family == .systemExtraLarge ? 6 : 4) { n in
+                        ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url, compact: true,
+                                 workspaceId: workspaceId)
                     }
                 }
             }
@@ -432,31 +384,6 @@ struct TaskBoard: View {
     }
 }
 
-struct SectionCard: View {
-    let section: PulseSection
-    let accent: Color
-    var maxMetrics = 6
-    var maxItems = 3
-    var opens = false
-    var workspaceId: String? = nil
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            SectionLabel(section: section, accent: accent, opens: opens)
-            if section.failed {
-                FailedNote(text: section.note)
-            } else {
-                ForEach(section.metrics.prefix(maxMetrics)) { MetricLine(metric: $0, accent: accent) }
-                if maxItems > 0, !section.items.isEmpty {
-                    ItemList(items: section.items, limit: maxItems, accent: accent, moreURL: section.url, compact: true,
-                             workspaceId: workspaceId)
-                        .padding(.top, 3)
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Single-section widget
 
 struct SectionView: View {
@@ -530,6 +457,13 @@ struct SectionView: View {
                     StatRow(metrics: Array(metrics.prefix(3)), accent: accent)
                     if large, metrics.count > 3 {
                         StatRow(metrics: Array(metrics.dropFirst(3).prefix(3)), accent: accent)
+                    }
+                    if large, !section.series.isEmpty {
+                        SeriesChart(points: section.series, currency: metrics.first(where: \.isMoney)?.currency,
+                                    tint: SectionStyle.tint(section.key))
+                            .frame(height: 80)
+                            .padding(.horizontal, 8).padding(.vertical, 6)
+                            .glass()
                     }
                     if n > 0, !section.items.isEmpty {
                         ItemList(items: section.items, limit: n, accent: accent, moreURL: section.url,

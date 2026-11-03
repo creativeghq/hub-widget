@@ -2,6 +2,17 @@
 
 Newest first. Each release's GitHub page opens with its entry from this file.
 
+## 1.4.6 — 3 Nov 2026
+
+- **The widget is a home screen.** Every area is an app icon with its name underneath, in its own
+  colour. A red badge shows how many things need you, like on iPhone. Click an icon to go inside and
+  see the figures and the list.
+- **New: Analytics.** Sales this month against the same days last month, money in and money out,
+  sales per day for the last two weeks as a chart, and your top customers this month. The figures
+  come from Finance → Reports, so both always agree.
+- **macOS glass design.** Panels, buttons and icons use the translucent look of macOS Tahoe, and follow
+  the desktop's tinted and clear widget styles.
+
 ## 1.4.5 — 3 Nov 2026
 
 - **Every notification shows which area it is about.** In the menu-bar panel each notification has a

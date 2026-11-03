@@ -55,6 +55,8 @@ struct PulseSection: Codable, Equatable, Identifiable {
     let items: [PulseItem]
     /// My tasks only: the day buckets with their counts, derived on the server.
     let filters: [PulseFilter]
+    /// Analytics only: sales per day for the last 14 days, oldest first.
+    let series: [PulsePoint]
 
     var id: String { key }
     var failed: Bool { status != "ok" }
@@ -70,6 +72,7 @@ struct PulseSection: Codable, Equatable, Identifiable {
         metrics = try c.decodeIfPresent([PulseMetric].self, forKey: .metrics) ?? []
         items = try c.decodeIfPresent([PulseItem].self, forKey: .items) ?? []
         filters = (try? c.decodeIfPresent([PulseFilter].self, forKey: .filters)) ?? []
+        series = (try? c.decodeIfPresent([PulsePoint].self, forKey: .series)) ?? []
     }
 }
 
@@ -77,7 +80,7 @@ struct PulseMetric: Codable, Equatable, Identifiable {
     let key: String
     let label: String
     let value: Double
-    /// `count` or `money`.
+    /// `count`, `money` or `percent`.
     let kind: String
     let currency: String?
     /// `attention` or `neutral`. Set by the server, never inferred here.
@@ -87,6 +90,21 @@ struct PulseMetric: Codable, Equatable, Identifiable {
     var id: String { key }
     var needsAttention: Bool { tone == "attention" }
     var isMoney: Bool { kind == "money" }
+    var isPercent: Bool { kind == "percent" }
+}
+
+/// One day of a section's series.
+struct PulsePoint: Codable, Equatable, Identifiable {
+    let date: String
+    let value: Double
+
+    var id: String { date }
+    var day: Date {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.dateFormat = "yyyy-MM-dd"
+        return f.date(from: date) ?? .distantPast
+    }
 }
 
 /// One day bucket of My tasks: `overdue`, `today`, `tomorrow`, `week` or `later`.

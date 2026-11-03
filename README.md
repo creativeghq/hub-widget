@@ -6,32 +6,41 @@ and opens the right page in the web app when you click a figure.
 
 ![Build](https://github.com/creativeghq/hub-widget/actions/workflows/build.yml/badge.svg)
 
-## What's new in 1.4.5
+## What's new in 1.4.6
 
-- **Every notification shows which area it is about.** In the menu-bar panel each notification has a
-  coloured icon in front of it: Finance, Inbox, CRM, Jobs, Marketing, Projects and so on.
-- **Mac banners name the area** under the title, and Notification Center groups them by area.
+- **The widget is a home screen.** Every area is an app icon with its name underneath, in its own
+  colour. A red badge shows how many things need you, like on iPhone. Click an icon to go inside and
+  see the figures and the list.
+- **New: Analytics.** Sales this month against the same days last month, money in and money out,
+  sales per day for the last two weeks as a chart, and your top customers this month. The figures
+  come from Finance → Reports, so both always agree.
+- **macOS glass design.** Panels, buttons and icons use the translucent look of macOS Tahoe, and follow
+  the desktop's tinted and clear widget styles.
 
 Earlier versions: [CHANGELOG.md](CHANGELOG.md) · [Download the latest](https://github.com/creativeghq/hub-widget/releases/latest)
 
 ```
 ┌─ Hub overview (large) ─────────────────────────────────┐
-│ Hub                         + Lead   4 need attention  │
+│ Hub                        + Lead  ● 4 need attention  │
 │ ┌ ✓ My tasks       2 › ┐  ┌ 👥 Leads          3 › ┐    │
 │ │ ○ Measure kitchen    │  │ ▍Maria Papadopoulou  │    │
 │ │   Overdue · 30 Oct   │  │   Bathroom renovation│    │
 │ │ ○ Order worktop      │  │ ▍Nikos Georgiou      │    │
 │ │   Today              │  │   Kitchen quote      │    │
 │ └──────────────────────┘  └──────────────────────┘    │
-│ ┌ ☀ Today          2 › ┐  ┌ € Finance          › ┐    │
-│ ┌ ▤ Projects       6 › ┐  ┌ ⌂ Real estate      › ┐    │
-│ ┌ ↗ Deals          9 › ┐  ┌ ✉ Inbox          3 › ┐    │
+│   [☀]²      [▤]       [€]³      [▧]                    │
+│   Today   Projects  Finance   Quotes                   │
+│   [▥]       [↗]       [⌂]¹      [▣]                    │
+│ Analytics  Deals  Real estate Warehouse                │
+│   [✉]³                                                 │
+│   Inbox                                                │
 │ Your workspace                      Updated 2 min ago  │
 └────────────────────────────────────────────────────────┘
 ```
 
-Tap **My tasks** for the task board — **All · Overdue · Today · Tomorrow · This week · Later**,
-tasks as cards you can tick off.
+Each icon opens its area inside the widget. **My tasks** opens the task board — **All · Overdue ·
+Today · Tomorrow · This week · Later**, tasks as cards you can tick off. **Analytics** opens this
+month's figures, a 14-day sales chart and your top customers.
 
 ## What you get
 

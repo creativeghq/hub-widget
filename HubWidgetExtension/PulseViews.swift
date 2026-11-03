@@ -1,30 +1,115 @@
 import SwiftUI
 import WidgetKit
 import AppIntents
+import Charts
 
 // MARK: - Building blocks
 
 enum Look {
-    static let radius: CGFloat = 10
-    static let fill = Color.primary.opacity(0.06)
+    static let radius: CGFloat = 12
     static let hairline = Color.primary.opacity(0.10)
 }
 
-/// A surface that reads as pressable: tinted fill + hairline, accent-tinted when it needs attention.
-struct TileBackground: ViewModifier {
-    let accent: Color
-    var attention = false
+/// Liquid-glass surface: a translucent fill, a specular rim lit from the top, and a soft lift.
+/// In the desktop's tinted and clear modes the system draws the glass, so only the rim stays.
+struct GlassBackground: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.widgetRenderingMode) private var mode
+    var tint: Color? = nil
+    var radius: CGFloat = Look.radius
 
     func body(content: Content) -> some View {
-        content
-            .background(attention ? accent.opacity(0.12) : Look.fill, in: RoundedRectangle(cornerRadius: Look.radius))
-            .overlay(RoundedRectangle(cornerRadius: Look.radius)
-                .strokeBorder(attention ? accent.opacity(0.45) : Look.hairline, lineWidth: 0.75))
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        let dark = scheme == .dark
+        return content
+            .background {
+                if mode == .fullColor {
+                    shape.fill(dark ? Color.white.opacity(0.08) : Color.white.opacity(0.55))
+                        .overlay(shape.fill(LinearGradient(colors: [.white.opacity(dark ? 0.06 : 0.35), .clear],
+                                                           startPoint: .top, endPoint: .center)))
+                        .overlay { if let tint { shape.fill(tint.opacity(dark ? 0.16 : 0.10)) } }
+                        .shadow(color: .black.opacity(dark ? 0.30 : 0.08), radius: 3, y: 1)
+                } else {
+                    shape.fill(Color.white.opacity(0.10))
+                }
+            }
+            .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(dark ? 0.28 : 0.85), .white.opacity(dark ? 0.04 : 0.20)],
+                                                       startPoint: .top, endPoint: .bottom), lineWidth: 0.75))
     }
 }
 
 extension View {
-    func tile(_ accent: Color, attention: Bool = false) -> some View { modifier(TileBackground(accent: accent, attention: attention)) }
+    func glass(tint: Color? = nil, radius: CGFloat = Look.radius) -> some View {
+        modifier(GlassBackground(tint: tint, radius: radius))
+    }
+
+    /// A panel or card; one needing attention gets a warm glass.
+    func tile(_ accent: Color, attention: Bool = false) -> some View { glass(tint: attention ? accent : nil) }
+}
+
+/// An area as an app icon: its glyph on a glass squircle in the area's colour, with a red count
+/// badge when something needs attention.
+struct AppIcon: View {
+    @Environment(\.widgetRenderingMode) private var mode
+    let key: String
+    var size: CGFloat = 44
+    var badge: String? = nil
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+        let tint = SectionStyle.tint(key)
+        let color = mode == .fullColor
+        ZStack {
+            if color {
+                shape.fill(tint.gradient)
+                    .overlay(shape.fill(LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.0)],
+                                                       startPoint: .top, endPoint: .center)))
+                    .shadow(color: tint.opacity(0.35), radius: size > 20 ? 3 : 1, y: size > 20 ? 2 : 0.5)
+            } else {
+                shape.fill(Color.white.opacity(0.16))
+            }
+            Image(systemName: SectionStyle.symbol(key))
+                .font(.system(size: size * 0.46, weight: .semibold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(color ? 0.18 : 0), radius: 1, y: 0.5)
+                .widgetAccentable()
+        }
+        .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.08)],
+                                                   startPoint: .top, endPoint: .bottom), lineWidth: size > 20 ? 0.8 : 0.5))
+        .frame(width: size, height: size)
+        .overlay(alignment: .topTrailing) {
+            if let badge {
+                Text(badge)
+                    .font(.system(size: max(9, size * 0.24), weight: .bold)).monospacedDigit()
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 4).frame(minWidth: size * 0.38, minHeight: size * 0.38)
+                    .background(Capsule().fill(color ? Color.red : Color.white.opacity(0.3)))
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.5), lineWidth: 0.5))
+                    .offset(x: size * 0.14, y: -size * 0.14)
+            }
+        }
+    }
+}
+
+/// One app on the home grid: icon over its name. Clicking zooms the widget into it.
+struct AppCell: View {
+    let section: PulseSection
+    var size: CGFloat = 44
+
+    var body: some View {
+        Button(intent: OpenSectionIntent(section: section.key)) {
+            VStack(spacing: 4) {
+                AppIcon(key: section.key, size: size, badge: section.badge)
+                Text(section.shortTitle)
+                    .font(.system(size: size < 40 ? 10 : 11, weight: .medium))
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .foregroundStyle(.primary)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
 }
 
 struct SectionLabel: View {
@@ -37,8 +122,7 @@ struct SectionLabel: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Image(systemName: SectionStyle.symbol(section.key))
-                .foregroundStyle(section.attentionCount > 0 ? accent : .secondary)
+            AppIcon(key: section.key, size: 16)
             Text(title ?? section.title).lineLimit(1)
             if opens {
                 Spacer(minLength: 2)
@@ -81,7 +165,7 @@ struct StatRow: View {
                 }
                 .padding(.horizontal, 8).padding(.vertical, 5)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(m.needsAttention ? accent.opacity(0.10) : Look.fill, in: RoundedRectangle(cornerRadius: 8))
+                .glass(tint: m.needsAttention ? accent : nil, radius: 9)
             }
         }
     }
@@ -295,9 +379,7 @@ struct FilterChip: View {
             .font(.caption2.weight(.semibold))
             .foregroundStyle(selected ? accent : .primary)
             .padding(.horizontal, 6).padding(.vertical, 3)
-            .background(selected ? accent.opacity(0.16) : Look.fill, in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6)
-                .strokeBorder(selected ? accent.opacity(0.5) : Look.hairline, lineWidth: 0.75))
+            .glass(tint: selected ? accent : nil, radius: 7)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -379,7 +461,7 @@ struct BannerLine: View {
                 .lineLimit(1)
                 .padding(.horizontal, 8).padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                .glass(radius: 8)
         }
     }
 }
@@ -400,7 +482,7 @@ struct HeaderChip: View {
         .font(.caption.weight(.semibold))
         .foregroundStyle(accent)
         .padding(.horizontal, 7).padding(.vertical, 3)
-        .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+        .glass(radius: 8)
     }
 }
 
@@ -440,4 +522,48 @@ struct MessageView: View {
 extension PulseSection {
     /// The metric a one-line summary should lead with: the first that needs attention, else the first.
     var headline: PulseMetric? { metrics.first { $0.needsAttention } ?? metrics.first }
+
+    /// The app icon's badge: the first figure needing attention, `!` when the section could not be read.
+    var badge: String? {
+        if failed { return "!" }
+        guard let m = metrics.first(where: \.needsAttention), m.value > 0 else { return nil }
+        return m.value >= 100 ? "99+" : m.value.formatted(.number.precision(.fractionLength(0)))
+    }
+
+    /// The name under the app icon.
+    var shortTitle: String {
+        switch key {
+        case "tasks": return "Tasks"
+        case "crm": return "Leads"
+        default: return title
+        }
+    }
+}
+
+/// Sales per day as bars in the area's colour, money on the trailing axis.
+struct SeriesChart: View {
+    let points: [PulsePoint]
+    let currency: String?
+    let tint: Color
+
+    var body: some View {
+        Chart(points) { p in
+            BarMark(x: .value("Day", p.day, unit: .day), y: .value("Sales", p.value))
+                .foregroundStyle(tint.gradient)
+                .cornerRadius(3)
+        }
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { v in
+                AxisGridLine().foregroundStyle(Look.hairline)
+                AxisValueLabel {
+                    if let d = v.as(Double.self) { Text(Fmt.money(d, currency: currency)).font(.system(size: 9)) }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day, count: 7)) { _ in
+                AxisValueLabel(format: .dateTime.day().month(.abbreviated)).font(.system(size: 9))
+            }
+        }
+    }
 }
