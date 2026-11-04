@@ -2,6 +2,12 @@
 
 Newest first. Each release's GitHub page opens with its entry from this file.
 
+## 1.4.10 — 4 Nov 2026
+
+- **Updates finish by themselves.** After an update the app refreshes the widget and the icon macOS
+  shows on its own, once, so you no longer need Terminal. Any notification banner on screen at that
+  moment may disappear.
+
 ## 1.4.9 — 4 Nov 2026
 
 - **New app icon.** The materials&decor logo, filling the whole icon. This is what you see on the

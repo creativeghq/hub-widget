@@ -27,6 +27,12 @@ targets:
     sources: [HubWidget, Shared]
     dependencies:
       - target: HubWidgetExtension
+      - target: HubWidgetRefresher
+        embed: true
+        link: false
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
       - package: Sparkle
     info:
       path: HubWidget/Info.plist
@@ -87,6 +93,23 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.creativeghq.hubwidget.widget
         SKIP_INSTALL: YES
 
+  # Not sandboxed, holds no key and reads nothing: see HubWidgetRefresher/main.swift.
+  HubWidgetRefresher:
+    type: application
+    platform: macOS
+    sources: [HubWidgetRefresher]
+    info:
+      path: HubWidgetRefresher/Info.plist
+      properties:
+        CFBundleDisplayName: Hub Widget Refresher
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSBackgroundOnly: true
+    settings:
+      base:
+        PRODUCT_NAME: Hub Widget Refresher
+        PRODUCT_BUNDLE_IDENTIFIER: com.creativeghq.hubwidget.refresher
+
   HubWidgetTests:
     type: bundle.unit-test
     platform: macOS
@@ -104,6 +127,7 @@ schemes:
       targets:
         HubWidget: all
         HubWidgetExtension: all
+        HubWidgetRefresher: all
     run:
       config: Debug
     test:

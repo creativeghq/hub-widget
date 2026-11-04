@@ -43,6 +43,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         }
         if HubStore.rememberedKey == nil { showSetup() }
         startPolling()
+        refreshAfterUpdate()
+    }
+
+    /// Once per installed build, so nobody needs Terminal to see a new icon or new widget code.
+    /// Recorded first: a refresher that fails must not run again on every launch.
+    private func refreshAfterUpdate() {
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        guard let build, HubStore.defaults.string(forKey: "refreshedBuild") != build else { return }
+        HubStore.defaults.set(build, forKey: "refreshedBuild")
+        let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/Hub Widget Refresher.app")
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = false
+        configuration.addsToRecentItems = false
+        NSWorkspace.shared.openApplication(at: helper, configuration: configuration) { _, _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { WidgetCenter.shared.reloadAllTimelines() }
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
