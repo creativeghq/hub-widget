@@ -1,0 +1,23 @@
+name: Glass preview
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - HubWidgetExtension/Glass.swift
+      - scripts/render_glass.swift
+      - .github/workflows/glass-preview.yml
+
+jobs:
+  render:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render
+        run: |
+          swiftc -parse-as-library -o render Shared/*.swift HubWidgetExtension/Glass.swift scripts/render_glass.swift
+          ./render
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glass-preview
+          path: glass-preview.png
