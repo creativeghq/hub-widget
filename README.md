@@ -6,6 +6,12 @@ and opens the right page in the web app when you click a figure.
 
 ![Build](https://github.com/creativeghq/hub-widget/actions/workflows/build.yml/badge.svg)
 
+## What's new in 1.4.8
+
+- **Real glass icons.** The tiles are now see-through, with a diagonal reflection and a bright edge
+  like the macOS glass, and the shadow around each box is gone. Panels got the same glass.
+- **Appointments fits.** The longest app name no longer gets cut off on the smaller widget.
+
 ## What's new in 1.4.7
 
 - **New: Appointments.** Your appointments as their own app, after Tasks: how many wait for you to

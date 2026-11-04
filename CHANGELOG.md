@@ -2,6 +2,12 @@
 
 Newest first. Each release's GitHub page opens with its entry from this file.
 
+## 1.4.8 — 4 Nov 2026
+
+- **Real glass icons.** The tiles are now see-through, with a diagonal reflection and a bright edge
+  like the macOS glass, and the shadow around each box is gone. Panels got the same glass.
+- **Appointments fits.** The longest app name no longer gets cut off on the smaller widget.
+
 ## 1.4.7 — 3 Nov 2026
 
 - **New: Appointments.** Your appointments as their own app, after Tasks: how many wait for you to

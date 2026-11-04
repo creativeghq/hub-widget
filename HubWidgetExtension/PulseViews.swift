@@ -17,7 +17,7 @@ struct AppCell: View {
                 AppIcon(key: section.key, size: size, badge: section.badge)
                 Text(section.shortTitle)
                     .font(.system(size: size < 40 ? 10 : 11))
-                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .lineLimit(1).minimumScaleFactor(0.7)
                     .foregroundStyle(.primary)
             }
             .frame(maxWidth: .infinity)
