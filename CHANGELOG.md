@@ -2,6 +2,12 @@
 
 Newest first. Each release's GitHub page opens with its entry from this file.
 
+## 1.4.9 — 4 Nov 2026
+
+- **New app icon.** The materials&decor logo, filling the whole icon. This is what you see on the
+  notifications that slide in from the side of the screen, and in Finder and System Settings. The
+  top bar icon stays as it was.
+
 ## 1.4.8 — 4 Nov 2026
 
 - **Real glass icons.** The tiles are now see-through, with a diagonal reflection and a bright edge

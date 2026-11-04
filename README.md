@@ -6,6 +6,12 @@ and opens the right page in the web app when you click a figure.
 
 ![Build](https://github.com/creativeghq/hub-widget/actions/workflows/build.yml/badge.svg)
 
+## What's new in 1.4.9
+
+- **New app icon.** The materials&decor logo, filling the whole icon. This is what you see on the
+  notifications that slide in from the side of the screen, and in Finder and System Settings. The
+  top bar icon stays as it was.
+
 ## What's new in 1.4.8
 
 - **Real glass icons.** The tiles are now see-through, with a diagonal reflection and a bright edge
