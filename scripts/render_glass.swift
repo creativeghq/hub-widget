@@ -11,7 +11,7 @@ private struct Cell: View {
     var body: some View {
         VStack(spacing: 4) {
             AppIcon(key: key, size: 44, badge: badged ? "3" : nil)
-            Text(SectionStyle.label(key)).font(.system(size: 11)).lineLimit(1)
+            Text(SectionStyle.label(key) ?? key).font(.system(size: 11)).lineLimit(1)
         }
         .frame(width: 62)
     }
