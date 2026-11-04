@@ -6,11 +6,12 @@ and opens the right page in the web app when you click a figure.
 
 ![Build](https://github.com/creativeghq/hub-widget/actions/workflows/build.yml/badge.svg)
 
-## What's new in 1.4.10
+## What's new in 1.4.11
 
-- **Updates finish by themselves.** After an update the app refreshes the widget and the icon macOS
-  shows on its own, once, so you no longer need Terminal. Any notification banner on screen at that
-  moment may disappear.
+- **Fixed: the widget could disappear after updating.** The automatic refresh added in 1.4.10 is
+  gone. If your widget was removed, add it again: right-click the desktop → Edit Widgets → Hub Widget.
+- **Test notification.** Settings now has *Send a test notification*, so you can see how a banner and
+  its icon look at any time.
 
 ## What's new in 1.4.9
 
@@ -324,6 +325,7 @@ is an app change and ships through auto-update.
 | ⚠ next to "Last good …" | The latest refresh failed (offline, VPN, platform down). Figures are from the time shown. |
 | A blank square instead of the app icon on Mac banners | macOS cached the icon before it existed. In Terminal: `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "/Applications/Hub Widget.app" && killall NotificationCenter` — the next banner shows the MH icon. |
 | Clicking a figure does nothing | Hub Widget.app must be in `/Applications`; open it once so macOS registers its `hubwidget://` links. |
+| The widget disappeared from the desktop | Right-click the desktop → Edit Widgets → Hub Widget, and add it again. 1.4.10 could cause this; 1.4.11 removed the cause. |
 | Widget missing from the gallery | Open the app once after installing, then log out/in if macOS still has not picked it up. |
 | A section you expect is missing | Check the key in the Hub Widget window: the preview lists hidden sections with the reason (module not in the workspace, or your role cannot see it). |
 
@@ -334,9 +336,6 @@ is an app change and ships through auto-update.
   typed into a widget's *Edit Widget* is kept by macOS for that widget. It is sent only to the
   platform API over HTTPS.
 - Both the app and the widget are sandboxed with outgoing network access only.
-- `Hub Widget Refresher`, inside the app, is not sandboxed. It holds no key and has no network code.
-  It runs once after each update to re-register the app with macOS and restart `NotificationCenter`
-  and `chronod`, the two processes that keep the old icon and the old widget.
 - The endpoint is read-only and runs as the key's owner, so database row security applies exactly
   as in the web app. A key bound to a workspace cannot read any other.
 - To revoke: delete the widget and revoke the key in Profile → Keys.

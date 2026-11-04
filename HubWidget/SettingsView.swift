@@ -96,6 +96,9 @@ struct SettingsView: View {
                     Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?")")
                         .foregroundStyle(.secondary)
                     Spacer()
+                    Button("Send a test notification") {
+                        Task { await delegate.confirm(title: "Test notification", body: "This is how Hub Widget notifications look.", path: "/") }
+                    }
                     Button("Check for updates…") { delegate.updater.checkForUpdates(nil) }
                 }
             } footer: {

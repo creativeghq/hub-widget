@@ -52,9 +52,6 @@ jobs:
             if codesign -d --entitlements - "$b" 2>&1 | grep -q get-task-allow; then echo "debug entitlement in $b"; exit 1; fi
           done
           test -f "$APP/Contents/Resources/AppIcon.icns"
-          REFRESHER="$APP/Contents/Helpers/Hub Widget Refresher.app"
-          test -x "$REFRESHER/Contents/MacOS/Hub Widget Refresher"
-          if codesign -d --entitlements - "$REFRESHER" 2>&1 | grep -q network; then echo "the refresher must have no network access"; exit 1; fi
           lipo -archs "$APP/Contents/MacOS/Hub Widget"
           # Sparkle decides "is there an update" from CFBundleVersion: a stale number re-offers the same update forever.
           for plist in "$APP/Contents/Info.plist" "$APP/Contents/PlugIns/HubWidgetExtension.appex/Contents/Info.plist"; do

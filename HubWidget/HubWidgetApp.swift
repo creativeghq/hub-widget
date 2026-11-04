@@ -43,22 +43,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, UNUs
         }
         if HubStore.rememberedKey == nil { showSetup() }
         startPolling()
-        refreshAfterUpdate()
+        reloadWidgetsAfterUpdate()
     }
 
-    /// Once per installed build, so nobody needs Terminal to see a new icon or new widget code.
-    /// Recorded first: a refresher that fails must not run again on every launch.
-    private func refreshAfterUpdate() {
+    /// Asks only. Restarting chronod or re-registering the app from here removed placed widgets in 1.4.10.
+    private func reloadWidgetsAfterUpdate() {
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
-        guard let build, HubStore.defaults.string(forKey: "refreshedBuild") != build else { return }
-        HubStore.defaults.set(build, forKey: "refreshedBuild")
-        let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/Hub Widget Refresher.app")
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = false
-        configuration.addsToRecentItems = false
-        NSWorkspace.shared.openApplication(at: helper, configuration: configuration) { _, _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { WidgetCenter.shared.reloadAllTimelines() }
-        }
+        guard let build, HubStore.defaults.string(forKey: "reloadedBuild") != build else { return }
+        HubStore.defaults.set(build, forKey: "reloadedBuild")
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

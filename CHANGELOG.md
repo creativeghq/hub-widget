@@ -2,11 +2,16 @@
 
 Newest first. Each release's GitHub page opens with its entry from this file.
 
+## 1.4.11 — 4 Nov 2026
+
+- **Fixed: the widget could disappear after updating.** The automatic refresh added in 1.4.10 is
+  gone. If your widget was removed, add it again: right-click the desktop → Edit Widgets → Hub Widget.
+- **Test notification.** Settings now has *Send a test notification*, so you can see how a banner and
+  its icon look at any time.
+
 ## 1.4.10 — 4 Nov 2026
 
-- **Updates finish by themselves.** After an update the app refreshes the widget and the icon macOS
-  shows on its own, once, so you no longer need Terminal. Any notification banner on screen at that
-  moment may disappear.
+- **Updates finish by themselves.** Withdrawn in 1.4.11: this could remove the widget from the desktop.
 
 ## 1.4.9 — 4 Nov 2026
 
